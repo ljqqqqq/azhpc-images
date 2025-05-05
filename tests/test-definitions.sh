@@ -188,7 +188,7 @@ function verify_rccl_installation {
     amdgpumod=$(lsmod | grep "^amdgpu")
     while [ $? -ne 0 ] && [ $retry_count -le 5 ]
     do
-        echo "*** ${FUNCNAME[1]} Waiting amdgpu driver loaded" >&2
+        echo "*** ${FUNCNAME[1]} Waiting amdgpu driver loaded, retry count $retry_count" >&2
         sleep 60s
         retry_count=$(($retry_count + 1))
         amdgpumod=$(lsmod | grep "^amdgpu")
