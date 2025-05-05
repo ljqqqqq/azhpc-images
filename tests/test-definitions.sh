@@ -191,8 +191,8 @@ function verify_rccl_installation {
     while [ $? -ne 0 ] && [ $retry_count -le 5 ]
     do
         sleep 60s
-        retry_count=$(($retry_count + 1))
         echo "*** ${FUNCNAME[1]} Waiting amdgpu driver loaded, retry count $retry_count/$max_retry" >&2
+        retry_count=$(($retry_count + 1))
         amdgpumod=$(lsmod | grep "^amdgpu")
     done
     check_exit_code "amdgpu driver is loaded" "No amdgpu driver"
@@ -205,10 +205,10 @@ function verify_rccl_installation {
             current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card Series')
             while [ $current_gpus -lt $expected_gpus ] && [ $retry_count -le 5 ]
             do
-                sleep 10s
-                retry_count=$((retry_count + 1))
+                sleep 60s
                 echo "Detected $current_gpus GPUs, waiting for all $expected_gpus GPUs to be ready... (retry $retry_count/$max_retry)"
-                current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card series')
+                retry_count=$((retry_count + 1))
+                current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card Series')
             done
             [ $current_gpus -eq $expected_gpus ]
             check_exit_code "all amd gpus are loaded" "Timeout waiting for $expected_gpus AMD GPUs. Only $current_gpus detected."
