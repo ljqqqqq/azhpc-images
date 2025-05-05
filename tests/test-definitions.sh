@@ -202,7 +202,7 @@ function verify_rccl_installation {
         standard_nd96isr_mi300x_v5)
             expected_gpus=8
             echo "Checking AMD GPU availability..."
-            current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card series')
+            current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card Series')
             while [ $current_gpus -lt $expected_gpus ] && [ $retry_count -le 5 ]
             do
                 sleep 10s
