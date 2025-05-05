@@ -185,27 +185,45 @@ function verify_rccl_installation {
     module load mpi/hpcx
 
     local retry_count=0
+    local max_retry=5
+    NumDevices=8
     amdgpumod=$(lsmod | grep "^amdgpu")
     while [ $? -ne 0 ] && [ $retry_count -le 5 ]
     do
-        echo "*** ${FUNCNAME[1]} Waiting amdgpu driver loaded, retry count $retry_count" >&2
         sleep 60s
         retry_count=$(($retry_count + 1))
+        echo "*** ${FUNCNAME[1]} Waiting amdgpu driver loaded, retry count $retry_count/$max_retry" >&2
         amdgpumod=$(lsmod | grep "^amdgpu")
     done
     check_exit_code "amdgpu driver is loaded" "No amdgpu driver"
     
+    retry_count=0
     case ${VMSIZE} in
-        standard_nd96isr_mi300x_v5) mpirun -np 8 \
-            --allow-run-as-root \
-            --map-by ppr:8:node \
-            -x LD_LIBRARY_PATH=/opt/rccl/lib:$LD_LIBRARY_PATH \
-            -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
-            -x NCCL_SOCKET_IFNAME=eth0 \
-            -x NCCL_DEBUG=WARN \
-            /opt/rccl-tests/all_reduce_perf -b1K -f2 -g1 -e 4G;;
+        standard_nd96isr_mi300x_v5)
+            expected_gpus=8
+            echo "Checking AMD GPU availability..."
+            current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card series')
+            while [ $current_gpus -lt $expected_gpus ] && [ $retry_count -le 5 ]
+            do
+                sleep 10s
+                retry_count=$((retry_count + 1))
+                echo "Detected $current_gpus GPUs, waiting for all $expected_gpus GPUs to be ready... (retry $retry_count/$max_retry)"
+                current_gpus=$(/opt/rocm/bin/rocm-smi --showproductname | grep -c 'Card series')
+            done
+            [ $current_gpus -eq $expected_gpus ]
+            check_exit_code "all amd gpus are loaded" "Timeout waiting for $expected_gpus AMD GPUs. Only $current_gpus detected."
+            mpirun -np 8 \
+                --allow-run-as-root \
+                --map-by ppr:8:node \
+                -x LD_LIBRARY_PATH=/opt/rccl/lib:$LD_LIBRARY_PATH \
+                -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
+                -x NCCL_SOCKET_IFNAME=eth0 \
+                -x NCCL_DEBUG=WARN \
+                /opt/rccl-tests/all_reduce_perf -b1K -f2 -g1 -e 4G
+            ;;
         *) ;;
     esac
+
     check_exit_code "RCCL ${VERSION_RCCL}" "Failed to run RCCL all reduce perf"
 
     module unload mpi/hpcx
