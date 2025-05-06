@@ -53,7 +53,7 @@ do
     if [ $(lspci -d 1002:74b5 | wc -l) -eq 8 -o $(lspci -d 1002:74bd | wc -l) -eq 8 -o $(lspci -d 1002:740c | wc -l) -eq 16 ]; then
        echo Required number of GPUs found
        at_count=91
-       sleep 120s
+       sleep 45s
        echo doing Modprobe for amdgpu
        if [ $(lspci -d 1002:740c | wc -l) -eq 16 ]; then
           sudo modprobe amdgpu
