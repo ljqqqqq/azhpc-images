@@ -20,9 +20,9 @@
             "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host_2.8.0-204000-24.07-ubuntu2004_amd64.deb"
         },
         "ubuntu22.04": {
-            "version": "2.10.0",
-            "sha256": "c9758f9029393b749908f0485827004dafa8cc0e24313f1f2bdae2406050ddfd",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host_2.10.0-093000-25.01-ubuntu2204_amd64.deb"
+            "version": "2.8.0",
+            "sha256": "289a3e00f676032b52afb1aab5f19d2a672bcca782daf9d30ade0b59975af582",
+            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host_2.8.0-204000-24.07-ubuntu2204_amd64.deb"  
         },
         "almalinux8.7": {
             "version": "2.8.0",
@@ -30,9 +30,9 @@
             "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host-2.8.0-204000_24.07_rhel87.x86_64.rpm"
         },
         "almalinux8.10": {
-            "version": "2.10.0",
-            "sha256": "075324dfb074c99bb947217af6469b7d091eec642217e4db4430ac96b1d16ddc",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host-2.10.0-093000_25.01_rhel810.x86_64.rpm"
+            "version": "2.8.0",
+            "sha256": "387d0b20311353a5833a029b3f8e7d64bf511ce88107be53f594f5c03e0ce26b",
+            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host-2.8.0-204000_24.07_rhel810.x86_64.rpm"
         },
         "rhel8.10": {
             "version": "2.8.0",
@@ -82,9 +82,9 @@
     },
     "impi": {
         "common": {
-            "version": "2021.15.0",
-            "sha256": "d4ad297174ce3837444468645e13cfe78f11d9bf2ad9ade2057b2668cccd9385",
-            "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/6b6e395e-8f38-4da3-913d-90a2bcf41028/intel-mpi-2021.15.0.495_offline.sh"
+            "version": "2021.13.1",
+            "sha256": "be61c4792d25bd4a1b5f7b808c06a9f4676f1b247d7605ac6d3c6cffdb8f19b7",
+            "url": "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/364c798c-4cad-4c01-82b5-e1edd1b476af/l_mpi_oneapi_p_2021.13.1.769_offline.sh"
         }
     },
     "nvidia": {
