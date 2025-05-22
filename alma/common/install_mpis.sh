@@ -164,6 +164,8 @@ setenv          MPI_INCLUDE     /opt/intel/oneapi/mpi/${impi_2021_version}/inclu
 setenv          MPI_LIB         /opt/intel/oneapi/mpi/${impi_2021_version}/lib
 setenv          MPI_MAN         /opt/intel/oneapi/mpi/${impi_2021_version}/share/man
 setenv          MPI_HOME        /opt/intel/oneapi/mpi/${impi_2021_version}
+prepend-path    LD_LIBRARY_PATH  /opt/hpcx-v2.18-gcc-mlnx_ofed-redhat8-cuda12-x86_64/ucx/lib/
+prepend-path    LD_LIBRARY_PATH  /opt/hpcx-v2.18-gcc-mlnx_ofed-redhat8-cuda12-x86_64/ucx/lib/ucx
 EOF
 
 # Create symlinks for modulefiles
