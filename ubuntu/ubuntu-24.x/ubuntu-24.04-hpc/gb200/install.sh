@@ -38,7 +38,7 @@ source ./set_properties.sh
 # $UBUNTU_COMMON_DIR/install_lustre_client.sh
 
 # install DOCA OFED
-$UBUNTU_COMMON_DIR/install_doca.sh
+./install_doca.sh
 
 # install PMIX
 $UBUNTU_COMMON_DIR/install_pmix.sh

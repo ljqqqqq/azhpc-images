@@ -21,6 +21,7 @@ if ! apt-get -y install doca-ofed; then
     apt-get -f -y install
     systemctl restart dkms
     dkms autoinstall
+    sleep 60
     if ! apt-get -y install doca-ofed; then
         echo "Failed to install doca-ofed after retry."
         exit 1
