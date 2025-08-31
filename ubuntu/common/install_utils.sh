@@ -11,7 +11,6 @@ apt-get -y install numactl \
                    libxml2-dev \
                    m4 \
                    byacc \
-                   python-setuptools \
                    tcl \
                    environment-modules \
                    tk \
@@ -47,7 +46,7 @@ apt-get -y install numactl \
                    nfs-common \
                    pssh
 
-if [[ $DISTRIBUTION != "ubuntu22.04" ]]; then apt-get install -y python-dev; fi
+if [[ ! "$DISTRIBUTION" =~ ^ubuntu(22\.04|24\.04)$ ]]; then apt-get install -y python-dev; fi
 
 # Install azcopy tool
 $COMMON_DIR/install_azcopy.sh

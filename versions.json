@@ -24,6 +24,13 @@
             "sha256": "c9758f9029393b749908f0485827004dafa8cc0e24313f1f2bdae2406050ddfd",
             "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host_2.10.0-093000-25.01-ubuntu2204_amd64.deb"
         },
+        "ubuntu24.04": {
+            "aarch64": {
+                "version": "2.10.0",
+                "sha256": "02a1ec08bc96f1d01082b37d86e2ee8972921468b7fb6e6a942667c4d6c287d8",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host_2.10.0-093512-25.01-ubuntu2404_arm64.deb"
+            }
+        },
         "almalinux8.7": {
             "version": "2.8.0",
             "sha256": "a9f1ebd173bd8df08ec8a8e2448f3d3f757460cb26690fb62ecca59f3f271bb5",
