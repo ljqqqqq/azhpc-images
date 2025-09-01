@@ -50,7 +50,6 @@ apt-get -y install numactl \
 
 if [[ ! "$DISTRIBUTION" =~ ^ubuntu(22\.04|24\.04)$ ]]; then apt-get install -y python-dev; fi
 
-
 # copy kvp client file
 $COMMON_DIR/copy_kvp_client.sh
 

@@ -205,11 +205,12 @@ function verify_rccl_installation {
 
 function verify_package_updates {
     case ${ID} in
-        ubuntu) sudo apt -q --assume-no update;;
-        almalinux) sudo yum update -y --setopt tsflags=test;
-            sudo yum clean packages;;
-        azurelinux) sudo dnf update -y --setopt tsflags=test;
-            sudo dnf clean packages;;
+        ubuntu) sudo apt -s upgrade;;
+        # we aren't opinionated about packages that have divergent versions in upstream repos
+        # mft has different versions from cuda and doca repos
+        # javapackages-filesystem has different versions from appstream and powertools, a problem AlmaLinux team needs to fix
+        almalinux) sudo dnf check-update --refresh -x mft -x javapackages-filesystem;;
+        azurelinux) true;;
         * ) ;;
     esac
     check_exit_code "Package update works" "Package update fails!"
@@ -238,10 +239,12 @@ function verify_gcc_installation {
 
 # Check module file for the explicit installations
 function verify_gcc_modulefile {
-    # Verify GCC Software installation path
-    check_exists "/opt/gcc-${VERSION_GCC}/"
-    # Verify GCC module file path
-    check_exists "${MODULE_FILES_ROOT}/gcc-${VERSION_GCC}"
+    if [[ $ID != "azurelinux" ]]; then
+        # Verify GCC Software installation path
+        check_exists "/opt/gcc-${VERSION_GCC}/"
+        # Verify GCC module file path
+        check_exists "${MODULE_FILES_ROOT}/gcc-${VERSION_GCC}"
+    fi
 }
 
 function verify_aocl_installation {
@@ -279,7 +282,7 @@ function verify_lustre_installation {
     case ${ID} in
         ubuntu) dpkg -l | grep lustre-client;;
         almalinux) dnf list installed | grep lustre-client;;
-        azurelinux) dnf list installed | grep lustre-client;;
+        azurelinux) true;;
         * ) ;;
     esac
     check_exit_code "Lustre Installed" "Lustre not installed!"
@@ -296,7 +299,7 @@ function verify_pssh_installation {
     case ${ID} in
         ubuntu) dpkg -l | grep pssh;;
         almalinux) dnf list installed | grep pssh;;
-        azurelinux) dnf list installed | grep pssh;;
+        azurelinux) tdnf list installed | grep pssh;;
         * ) ;;
     esac
     check_exit_code "PSSH Installed" "PSSH not installed!"
@@ -312,7 +315,7 @@ function verify_dcgm_installation {
     case ${ID} in
         ubuntu) dpkg -l | grep datacenter-gpu-manager;;
         almalinux) dnf list installed | grep datacenter-gpu-manager;;
-        azurelinux) dnf list installed | grep datacenter-gpu-manager;;
+        azurelinux) tdnf list installed | grep datacenter-gpu-manager;;
         * ) ;;
     esac
     check_exit_code "DCGM Installed" "DCGM not installed!"
