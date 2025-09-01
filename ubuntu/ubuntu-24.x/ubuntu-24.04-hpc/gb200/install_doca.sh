@@ -3,10 +3,10 @@
 set -x
 
 source ${COMMON_DIR}/utilities.sh
-DOCA_METADATA=$(get_component_config "doca")
-DOCA_VERSION=$(jq -r '.version' <<< $DOCA_METADATA)
-DOCA_SHA256=$(jq -r '.sha256' <<< $DOCA_METADATA)
-DOCA_URL=$(jq -r '.url' <<< $DOCA_METADATA)
+doca_metadata=$(get_component_config "doca")
+DOCA_VERSION=$(jq -r '.version' <<< $doca_metadata)
+DOCA_SHA256=$(jq -r '.sha256' <<< $doca_metadata)
+DOCA_URL=$(jq -r '.url' <<< $doca_metadata)
 DOCA_FILE=$(basename ${DOCA_URL})
 
 # azcopy copy $DOCA_URL /tmp/
@@ -17,16 +17,14 @@ sudo dpkg -i $DOCA_FILE
 # popd
 apt-get update
 
-if ! apt-get -y install doca-ofed; then
-    apt-get -f -y install
-    systemctl restart dkms
-    dkms autoinstall
-    sleep 60
-    if ! apt-get -y install doca-ofed; then
-        echo "Failed to install doca-ofed after retry."
-        exit 1
-    fi
-fi
+
+# Unset ARCH set by set_properties.sh. 
+# ARCH == uname -m (aarch64)
+# messes up some doca-ofed package post install scripts,
+# since kernel source dir only has arch/arm64
+unset ARCH
+
+apt-get -y install doca-ofed
 $COMMON_DIR/write_component_version.sh "DOCA" $DOCA_VERSION
 
 OFED_VERSION=$(ofed_info | sed -n '1,1p' | awk -F'-' 'OFS="-" {print $3,$4}' | tr -d ':')

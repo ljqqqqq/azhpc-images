@@ -15,14 +15,18 @@
     },
     "doca": {
         "ubuntu20.04": {
-            "version": "2.8.0",
-            "sha256": "00f76872fc1073ca83eccae519f284eaa9a241ea23b9bfd898b082460ddea595",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host_2.8.0-204000-24.07-ubuntu2004_amd64.deb"
+            "x86_64": {
+                "version": "2.8.0",
+                "sha256": "00f76872fc1073ca83eccae519f284eaa9a241ea23b9bfd898b082460ddea595",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host_2.8.0-204000-24.07-ubuntu2004_amd64.deb"
+            }
         },
         "ubuntu22.04": {
-            "version": "2.10.0",
-            "sha256": "c9758f9029393b749908f0485827004dafa8cc0e24313f1f2bdae2406050ddfd",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host_2.10.0-093000-25.01-ubuntu2204_amd64.deb"
+            "x86_64": {
+                "version": "2.8.0",
+                "sha256": "289a3e00f676032b52afb1aab5f19d2a672bcca782daf9d30ade0b59975af582",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host_2.8.0-204000-24.07-ubuntu2204_amd64.deb"
+            }
         },
         "ubuntu24.04": {
             "aarch64": {
@@ -32,19 +36,18 @@
             }
         },
         "almalinux8.7": {
-            "version": "2.8.0",
-            "sha256": "a9f1ebd173bd8df08ec8a8e2448f3d3f757460cb26690fb62ecca59f3f271bb5",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host-2.8.0-204000_24.07_rhel87.x86_64.rpm"
+            "x86_64": {
+                "version": "2.8.0",
+                "sha256": "a9f1ebd173bd8df08ec8a8e2448f3d3f757460cb26690fb62ecca59f3f271bb5",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host-2.8.0-204000_24.07_rhel87.x86_64.rpm"
+            }
         },
         "almalinux8.10": {
-            "version": "2.10.0",
-            "sha256": "075324dfb074c99bb947217af6469b7d091eec642217e4db4430ac96b1d16ddc",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host-2.10.0-093000_25.01_rhel810.x86_64.rpm"
-        },
-        "rhel8.10": {
-            "version": "2.8.0",
-            "sha256": "387d0b20311353a5833a029b3f8e7d64bf511ce88107be53f594f5c03e0ce26b",
-            "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host-2.8.0-204000_24.07_rhel810.x86_64.rpm"
+            "x86_64": {
+                "version": "2.8.0",
+                "sha256": "387d0b20311353a5833a029b3f8e7d64bf511ce88107be53f594f5c03e0ce26b",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.8.0/host/doca-host-2.8.0-204000_24.07_rhel810.x86_64.rpm"
+            }
         }
     },
     "hpcx": {
