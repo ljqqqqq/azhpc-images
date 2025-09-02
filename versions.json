@@ -155,132 +155,176 @@
     },
     "nvidia": {
         "ubuntu20.04": {
-            "driver": {
-                "version": "560.35.03",
-                "sha256": "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
-            },
-            "fabricmanager": {
-                "distribution": "ubuntu2004",
-                "version": "560.35.03-1",
-                "sha256": "ad68065a83e2d3a5b3c3b8121fdc146c2aea5cdcca77b1ab4f9a64ac932be966"        
+            "x86_64":{
+                "driver": {
+                    "version": "560.35.03",
+                    "sha256": "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
+                },
+                "fabricmanager": {
+                    "distribution": "ubuntu2004",
+                    "version": "560.35.03-1",
+                    "sha256": "ad68065a83e2d3a5b3c3b8121fdc146c2aea5cdcca77b1ab4f9a64ac932be966"        
+                }
             }   
         },
         "ubuntu22.04": {
-            "driver": {
-                "version": "570.133.20",
-                "sha256": "1253d17b1528e8a24bf1f34a8ac6591c924b98ad7a32344bde253aa622ac1605"
-            },
-            "fabricmanager": {
-                "distribution": "ubuntu2204",
-                "version": "570.133.20-1",
-                "sha256": "f9e4bf0b03d37facd1cd41f4bfd667bfab40b8c378b18ea0d9ca301d74ac6862"        
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "570.133.20",
+                    "sha256": "1253d17b1528e8a24bf1f34a8ac6591c924b98ad7a32344bde253aa622ac1605"
+                },
+                "fabricmanager": {
+                    "distribution": "ubuntu2204",
+                    "version": "570.133.20-1",
+                    "sha256": "f9e4bf0b03d37facd1cd41f4bfd667bfab40b8c378b18ea0d9ca301d74ac6862"        
+                }
+            }
+        },
+        "ubuntu24.04": {
+            "aarch64":{
+                "driver": {
+                    "version": "570.158.08",
+                    "distribution": "ubuntu2404"
+                }
+            }
         },
         "almalinux8.7": {
-            "driver": {
-                "version": "560.35.03",
-                "sha256": "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
-            },
-            "fabricmanager": {
-                "distribution": "rhel8",
-                "version": "560.35.03-1",
-                "sha256": "881a686f3214fbad464404f6c71dace656cdca841e3abdfd1b04a8e310e797ad"        
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "560.35.03",
+                    "sha256": "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
+                },
+                "fabricmanager": {
+                    "distribution": "rhel8",
+                    "version": "560.35.03-1",
+                    "sha256": "881a686f3214fbad464404f6c71dace656cdca841e3abdfd1b04a8e310e797ad"        
+                }
+            }  
         },
         "almalinux8.10": {
-            "driver": {
-                "version": "570.133.20",
-                "sha256": "1253d17b1528e8a24bf1f34a8ac6591c924b98ad7a32344bde253aa622ac1605"
-            },
-            "fabricmanager": {
-                "distribution": "rhel8",
-                "version": "570.133.20-1",
-                "sha256": "64d01da1a0704fe226eeafcf97cdcab0dced8cadeb44b5d7778f9b96bf12a82f"        
+            "x86_64":{
+                "driver": {
+                    "version": "570.133.20",
+                    "sha256": "1253d17b1528e8a24bf1f34a8ac6591c924b98ad7a32344bde253aa622ac1605"
+                },
+                "fabricmanager": {
+                    "distribution": "rhel8",
+                    "version": "570.133.20-1",
+                    "sha256": "64d01da1a0704fe226eeafcf97cdcab0dced8cadeb44b5d7778f9b96bf12a82f"        
+                }
             }   
         },
         "rhel8.10": {
-            "driver": {
+            "x86_64":{            
+                "driver": {
                 "version": "560.35.03",
                 "sha256": "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
-            },
-            "fabricmanager": {
-                "distribution": "rhel8",
-                "version": "560.35.03-1",
-                "sha256": "881a686f3214fbad464404f6c71dace656cdca841e3abdfd1b04a8e310e797ad"        
-	        }
+                },
+                "fabricmanager": {
+                    "distribution": "rhel8",
+                    "version": "560.35.03-1",
+                    "sha256": "881a686f3214fbad464404f6c71dace656cdca841e3abdfd1b04a8e310e797ad"        
+                }
+            }
         },
         "azurelinux3.0": {
-            "driver": {
-                "version": "570.133.20",
-                "sha256": "1818c90657d17e510de9fa032385ff7e99063e848e901cb4636ee71c8b339313"
-            },
-            "fabricmanager": {
-                "distribution": "azl3",
-                "version": "570.133.20",
-                "sha256": "e2d359986ca733c568f5a21fd7686f1b002b09637bf1b3a596333bd5ffbc3edb"       
+            "x86_64":{
+                "driver": {
+                    "version": "570.133.20",
+                    "sha256": "1818c90657d17e510de9fa032385ff7e99063e848e901cb4636ee71c8b339313"
+                },
+                "fabricmanager": {
+                    "distribution": "azl3",
+                    "version": "570.133.20",
+                    "sha256": "e2d359986ca733c568f5a21fd7686f1b002b09637bf1b3a596333bd5ffbc3edb"       
+                }
             }
         }
     },
     "cuda": {
         "ubuntu20.04": {
-            "driver": {
-                "version": "12.6",
-                "distribution": "ubuntu2004"
-            },
-            "samples": {
-                "version": "12.5",
-                "sha256": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972"
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "12.6",
+                    "distribution": "ubuntu2004"
+                },
+                "samples": {
+                    "version": "12.5",
+                    "sha256": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972"
+                }
+            }  
         },
         "ubuntu22.04": {
-            "driver": {
-                "version": "12.8",
-                "distribution": "ubuntu2204"
-            },
-            "samples": {
-                "version": "12.8",
-                "sha256": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "12.8",
+                    "distribution": "ubuntu2204"
+                },
+                "samples": {
+                    "version": "12.8",
+                    "sha256": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
+                }
+            }
         },
+        "ubuntu24.04": {
+            "aarch64":{
+                "driver": {
+                    "version": "12.9",
+                    "distribution": "ubuntu2404"
+                },
+                "samples": {
+                    "version": "12.9",
+                    "sha256": "2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015"
+                } 
+            }
+        },        
         "almalinux8.7": {
-            "driver": {
-                "version": "12.6",
-                "distribution": "rhel8"
-            },
-            "samples": {
-                "version": "12.5",
-                "sha256": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972"
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "12.6",
+                    "distribution": "rhel8"
+                },
+                "samples": {
+                    "version": "12.5",
+                    "sha256": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972"
+                }
+            }  
         },
         "almalinux8.10": {
-            "driver": {
-                "version": "12.8",
-                "distribution": "rhel8"
-            },
-            "samples": {
-                "version": "12.8",
-                "sha256": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
-            }   
+            "x86_64":{            
+                "driver": {
+                    "version": "12.8",
+                    "distribution": "rhel8"
+                },
+                "samples": {
+                    "version": "12.8",
+                    "sha256": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
+                }
+        }  
         },
         "rhel8.10": {
-            "driver": {
-                "version": "12.6",
-                "distribution": "rhel8"
-            },
-            "samples": {
-                "version": "12.5",
-                "sha256": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972"
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "12.6",
+                    "distribution": "rhel8"
+                },
+                "samples": {
+                    "version": "12.5",
+                    "sha256": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972"
+                }
+            }  
         },
         "azurelinux3.0": {
-            "driver": {
-                "version": "12.8",
-                "distribution": "azl3"
-            },
-            "samples": {
-                "version": "12.8",
-                "sha256": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
-            }   
+            "x86_64":{
+                "driver": {
+                    "version": "12.8",
+                    "distribution": "azl3"
+                },
+                "samples": {
+                    "version": "12.8",
+                    "sha256": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
+                }
+            }  
         }
     },
     "gdrcopy": {

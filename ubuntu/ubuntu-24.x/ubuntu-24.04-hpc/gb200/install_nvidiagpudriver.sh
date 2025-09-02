@@ -12,53 +12,43 @@
 set -ex
 source ${COMMON_DIR}/utilities.sh
 cuda_metadata=$(get_component_config "cuda")
-cuda_version=$(jq -r '.driver.version' <<< $cuda_metadata)
-cuda_keyring=$(jq -r '.driver.keyring' <<< $cuda_metadata)
-cuda_download_url=$(jq -r '.driver.url' <<< $cuda_metadata)
-cuda_file=$(basename ${cuda_download_url})
+CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
+CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
+CUDA_SAMPLES_VERSION=$(jq -r '.samples.version' <<< $cuda_metadata)
+CUDA_SAMPLES_SHA256=$(jq -r '.samples.sha256' <<< $cuda_metadata)
 
-# Dependency for kernel build packages
-apt install -y gcc dkms make cmake build-essential
-
-# Using package manager installation
-wget $cuda_download_url
-dpkg -i $cuda_file
-curl -fsSL $cuda_keyring | gpg --batch --yes --dearmor -o /usr/share/keyrings/cuda-archive-keyring.gpg
-
-# Pin the repository to prefer the local repository
-cat <<EOF > /etc/apt/preferences.d/00-nvidia-prefer
-Package: *
-Pin: origin ""
-Pin-Priority: 1001
-EOF
+wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/sbsa/cuda-keyring_1.1-1_all.deb
+dpkg -i ./cuda-keyring_1.1-1_all.deb
 
 apt-get update
-apt-get -y install cuda-toolkit-$cuda_version
+apt install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
+
 
 # Set CUDA related environment variables to /etc/bash.bashrc
 echo 'export CUDA_HOME=/usr/local/cuda' | tee -a /etc/profile
 echo 'export PATH=$CUDA_HOME/bin:$PATH' | tee -a /etc/profile
 echo 'export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH' | tee -a /etc/profile
+$COMMON_DIR/write_component_version.sh "CUDA" ${CUDA_DRIVER_VERSION}
+
+# Download CUDA samples
+TARBALL="v${CUDA_SAMPLES_VERSION}.tar.gz"
+CUDA_SAMPLES_DOWNLOAD_URL=https://github.com/NVIDIA/cuda-samples/archive/refs/tags/${TARBALL}
+$COMMON_DIR/download_and_verify.sh ${CUDA_SAMPLES_DOWNLOAD_URL} ${CUDA_SAMPLES_SHA256}
+tar -xvf ${TARBALL}
+pushd ./cuda-samples-${CUDA_SAMPLES_VERSION}
+mkdir build && cd build
+cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc ..
+make -j $(nproc)
+mv -vT ./Samples /usr/local/cuda-${CUDA_DRIVER_VERSION}/samples # Use the same version as the CUDA toolkit as thats where samples is being moved to
+popd
 
 # Install NVIDIA GPU driver
 nvidia_gpu_driver_metadata=$(get_component_config "nvidia")
-nvidia_gpu_driver_major_version=$(jq -r '.driver.major_version' <<< $nvidia_gpu_driver_metadata)
-nvidia_gpu_driver_version=$(jq -r '.driver.version' <<< $nvidia_gpu_driver_metadata)
-nvidia_gpu_driver_download_url=$(jq -r '.driver.url' <<< $nvidia_gpu_driver_metadata)
-nvidia_gpu_driver_file=$(basename ${nvidia_gpu_driver_download_url})
-
-# Download and install the NVIDIA GPU driver
-# azcopy login --identity
-# azcopy copy $nvidia_gpu_driver_download_url ./
-# dpkg -i $nvidia_gpu_driver_file
-# # Copy the keyring file to the appropriate directory
-# distribution=$(. /etc/os-release; echo $ID$VERSION_ID | tr -d '.')
-# cp /var/nvidia-driver-local-repo-$distribution-$nvidia_gpu_driver_version/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
-# # Update the package lists to include the new repository
-# apt update
+NVIDIA_GPU_DRIVER_MAJOR_VERSION=$(jq -r '.driver.major_version' <<< $nvidia_gpu_driver_metadata)
+NVIDIA_GPU_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_gpu_driver_metadata)
 
 # Install the NVIDIA driver and related packages
-apt install nvidia-dkms-$nvidia_gpu_driver_major_version-open nvidia-driver-$nvidia_gpu_driver_major_version-open nvidia-modprobe -y
+apt install nvidia-dkms-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-driver-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-modprobe -y
 
 # remove unused configuration file if the file was created by the NVIDIA driver
 rm /etc/modprobe.d/nvidia-graphics-drivers-kms.conf
@@ -101,8 +91,6 @@ nvidia-smi
 # Write the driver versions to the component versions file
 nvidia_driver_version=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n 1)
 $COMMON_DIR/write_component_version.sh "NVIDIA" $nvidia_driver_version
-cuda_version=$(source /etc/profile; nvcc --version | grep release | awk '{print $6}' | cut -c2-)
-$COMMON_DIR/write_component_version.sh "CUDA" $cuda_version
 
 $UBUNTU_COMMON_DIR/install_gdrcopy.sh
 
