@@ -8,22 +8,22 @@
 ############################################################################
 set -ex
 
-GPUi="NVIDIA"
+# Check if arguments are passed
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Error: Missing arguments. Please provide both GPU type (NVIDIA/AMD) and SKU."
+    exit 1
+fi
+
+export GPU=$1
+export SKU=$2
 
 if [[ "$#" -gt 0 ]]; then
-    INPUT=$1
-    if [ "$INPUT" == "AMD" ]; then
-        GPUi="AMD"
-	echo "ERROR, the AMD pathway is not fully implemented yet."
-	exit 1
-    elif [ "$INPUT" != "NVIDIA" ]; then
-        echo "Error: Invalid GPU type. Please specify 'NVIDIA' or 'AMD'."
-	exit 1
+   if [[ "$GPU" != "NVIDIA" && "$GPU" != "AMD" ]]; then
+       echo "Error: Invalid GPU type. Please specify 'NVIDIA' or 'AMD'."
+       exit 1
     fi
 fi
 
-
-export GPU=$GPUi
 
 # jq is needed to parse the component versions from the versions.json file
 apt install -y jq
@@ -38,7 +38,7 @@ source ./set_properties.sh
 # $UBUNTU_COMMON_DIR/install_lustre_client.sh
 
 # install DOCA OFED
-./install_doca.sh
+$UBUNTU_COMMON_DIR/install_doca.sh "$SKU"
 
 # install PMIX
 $UBUNTU_COMMON_DIR/install_pmix.sh

@@ -7,14 +7,20 @@ pmix_metadata=$(get_component_config "pmix")
 PMIX_VERSION=$(jq -r '.version' <<< $pmix_metadata)
 UBUNTU_VERSION=$(cat /etc/os-release | grep VERSION_ID | cut -d= -f2 | cut -d\" -f2)
 
-if [ $UBUNTU_VERSION == 22.04 ]; then
+if [ $UBUNTU_VERSION == 24.04 ]; then
+    REPO=slurm-ubuntu-noble    
+elif [ $UBUNTU_VERSION == 22.04 ]; then
     REPO=slurm-ubuntu-jammy
 elif [ $UBUNTU_VERSION == 20.04 ]; then
-    REPO=slurm-ubuntu-focal
+    REPO=slurm-ubuntu-focal 
 else echo "$UBUNTU_VERSION not supported for pmix installation."
 fi
 
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/repos/$REPO/ insiders main" > /etc/apt/sources.list.d/slurm.list
+if [ "$1" = "GB200" ]; then
+    echo "deb [arch=arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/repos/$REPO/ insiders main" > /etc/apt/sources.list.d/slurm.list
+else
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/repos/$REPO/ insiders main" > /etc/apt/sources.list.d/slurm.list
+fi
 
 # Set priority for pmix and slurm packages from PMC to be higher than upstream ubuntu.
 echo "\

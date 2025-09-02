@@ -14,6 +14,14 @@ $COMMON_DIR/download_and_verify.sh $DOCA_URL $DOCA_SHA256
 dpkg -i $DOCA_FILE
 apt-get update
 
+if [ "$1" = "GB200" ]; then
+    # Unset ARCH set by set_properties.sh. 
+    # ARCH == uname -m (aarch64)
+    # messes up some doca-ofed package post install scripts,
+    # since kernel source dir only has arch/arm64
+    unset ARCH
+fi
+
 apt-get -y install doca-ofed
 $COMMON_DIR/write_component_version.sh "DOCA" $DOCA_VERSION
 
