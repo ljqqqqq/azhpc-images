@@ -41,10 +41,10 @@ source ./set_properties.sh
 $UBUNTU_COMMON_DIR/install_doca.sh "$SKU"
 
 # install PMIX
-$UBUNTU_COMMON_DIR/install_pmix.sh
+$UBUNTU_COMMON_DIR/install_pmix.sh "$SKU"
 
 # install mpi libraries
-$UBUNTU_COMMON_DIR/install_mpis.sh
+$UBUNTU_COMMON_DIR/install_mpis.sh "$SKU"
 
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
