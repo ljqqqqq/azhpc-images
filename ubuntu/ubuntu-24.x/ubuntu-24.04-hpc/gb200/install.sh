@@ -51,7 +51,7 @@ if [ "$GPU" = "NVIDIA" ]; then
     ./install_nvidiagpudriver.sh
     
     # Install NCCL
-    $UBUNTU_COMMON_DIR/install_nccl.sh
+    $UBUNTU_COMMON_DIR/install_nccl.sh "$SKU"
 
     # Install nvshmem
     ./install_nvshmem.sh
@@ -60,7 +60,7 @@ if [ "$GPU" = "NVIDIA" ]; then
     $UBUNTU_COMMON_DIR/install_docker.sh
     
     # Install nvbandwidth tool
-    ./install_nvbandwidth_tool.sh
+    $UBUNTU_COMMON_DIR/install_nvbandwidth_tool.sh
 fi
 
 if [ "$GPU" = "AMD" ]; then

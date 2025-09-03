@@ -329,42 +329,75 @@
     },
     "gdrcopy": {
         "ubuntu20.04": {
-            "version": "2.5-1",
-            "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
-            "distribution": "Ubuntu20_04"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
+                "distribution": "Ubuntu20_04"
+            }
         },
         "ubuntu22.04": {
-            "version": "2.5-1",
-            "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
-            "distribution": "Ubuntu22_04"
+            "x86_64":{     
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "Ubuntu22_04"
+            }
+        },
+        "ubuntu24.04": {
+            "aarch64":{
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "Ubuntu24_04"
+            }
         },
         "almalinux8.7": {
-            "version": "2.5-1",
-            "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
-            "distribution": "el8"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
+                "distribution": "el8"
+            }
         },
         "almalinux8.10": {
-            "version": "2.5-1",
-            "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
-            "distribution": "el8"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "el8"
+            }
         },
         "rhel8.10": {
-            "version": "2.5-1",
-            "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
-            "distribution": "el8"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
+                "distribution": "el8"
+            }
         },
         "azurelinux3.0": {
-            "version": "2.5-7",
-            "sha256": "9f1ddefaf7ebf09f1f4cb04873ed9fb255ddfd819ab1cf5ec2e73ed96140565a",
-            "distribution": "azl3"
+            "x86_64":{
+                "version": "2.5-7",
+                "sha256": "9f1ddefaf7ebf09f1f4cb04873ed9fb255ddfd819ab1cf5ec2e73ed96140565a",
+                "distribution": "azl3"
+            }
         }
     },
     "nccl": {
+        "ubuntu24.04": {
+            "aarch64": {
+                "version": "2.27.5-1",
+                "rdmasharpplugins": {
+                    "commit": "v2.7.x"
+                }
+            }
+        },
         "common": {
             "version": "2.26.2-1",
             "rdmasharpplugins": {
                 "commit": "master"
             }
+        }
+    },
+    "nvbandwidth": {
+        "common": {
+            "version": "0.8",
+            "url": "https://github.com/NVIDIA/nvbandwidth"
         }
     },
     "dcgm": {
