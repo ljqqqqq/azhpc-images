@@ -95,7 +95,7 @@ $COMMON_DIR/write_component_version.sh "NVIDIA" $nvidia_driver_version
 $UBUNTU_COMMON_DIR/install_gdrcopy.sh
 
 # Install NVIDIA IMEX
-apt-get install nvidia-imex-$nvidia_gpu_driver_major_version -y
+apt-get install nvidia-imex-$NVIDIA_GPU_DRIVER_MAJOR_VERSION -y
 
 # Add configuration to /etc/modprobe.d/nvidia.conf
 cat <<EOF >> /etc/modprobe.d/nvidia.conf

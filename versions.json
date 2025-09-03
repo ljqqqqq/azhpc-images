@@ -122,11 +122,13 @@
     },
     "mofed": {
         "azurelinux3.0": {
-            "version": "24.10-20",
-            "xpmem.version": "2.7.4-20",
-            "knem.version": "1.1.4.90mlnx3-20",
-            "mft_kernel.version": "4.30.0-20",
-            "sha256": "34e826fea03d6505b50909959ed029282a6238c75830fbe5b2bc15442cf8f8b5"
+            "x86_64":{
+                "version": "24.10-20",
+                "xpmem.version": "2.7.4-20",
+                "knem.version": "1.1.4.90mlnx3-20",
+                "mft_kernel.version": "4.30.0-20",
+                "sha256": "34e826fea03d6505b50909959ed029282a6238c75830fbe5b2bc15442cf8f8b5"
+            }
         }
     },
     "mvapich2": {
@@ -135,8 +137,10 @@
             "sha256": "03fc160c81a1d522b1e7c6723841e27fcab04d527484e4242d3e66d7c5024205"
         },
         "azurelinux3.0": {
-            "version": "2.3.7-1",
-            "sha256": "fdd971cf36d6476d007b5d63d19414546ca8a2937b66886f24a1d9ca154634e4"
+            "x86_64":{
+                "version": "2.3.7-1",
+                "sha256": "fdd971cf36d6476d007b5d63d19414546ca8a2937b66886f24a1d9ca154634e4"
+            }
         }
     },
     "ompi": {
@@ -183,8 +187,8 @@
         "ubuntu24.04": {
             "aarch64":{
                 "driver": {
-                    "version": "570.158.08",
-                    "distribution": "ubuntu2404"
+                    "version": "570.172.08",
+                    "major_version": "570"
                 }
             }
         },
@@ -329,42 +333,75 @@
     },
     "gdrcopy": {
         "ubuntu20.04": {
-            "version": "2.5-1",
-            "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
-            "distribution": "Ubuntu20_04"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
+                "distribution": "Ubuntu20_04"
+            }
         },
         "ubuntu22.04": {
-            "version": "2.5-1",
-            "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
-            "distribution": "Ubuntu22_04"
+            "x86_64":{     
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "Ubuntu22_04"
+            }
+        },
+        "ubuntu24.04": {
+            "aarch64":{
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "Ubuntu24_04"
+            }
         },
         "almalinux8.7": {
-            "version": "2.5-1",
-            "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
-            "distribution": "el8"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
+                "distribution": "el8"
+            }
         },
         "almalinux8.10": {
-            "version": "2.5-1",
-            "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
-            "distribution": "el8"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "el8"
+            }
         },
         "rhel8.10": {
-            "version": "2.5-1",
-            "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
-            "distribution": "el8"
+            "x86_64":{
+                "version": "2.5-1",
+                "commit": "1366e20d140c5638fcaa6c72b373ac69f7ab2532",
+                "distribution": "el8"
+            }
         },
         "azurelinux3.0": {
-            "version": "2.5-7",
-            "sha256": "9f1ddefaf7ebf09f1f4cb04873ed9fb255ddfd819ab1cf5ec2e73ed96140565a",
-            "distribution": "azl3"
+            "x86_64":{
+                "version": "2.5-7",
+                "sha256": "9f1ddefaf7ebf09f1f4cb04873ed9fb255ddfd819ab1cf5ec2e73ed96140565a",
+                "distribution": "azl3"
+            }
         }
     },
     "nccl": {
+        "ubuntu24.04": {
+            "aarch64": {
+                "version": "2.27.5-1",
+                "rdmasharpplugins": {
+                    "commit": "v2.7.x"
+                }
+            }
+        },
         "common": {
             "version": "2.26.2-1",
             "rdmasharpplugins": {
                 "commit": "master"
             }
+        }
+    },
+    "nvbandwidth": {
+        "common": {
+            "version": "0.8",
+            "url": "https://github.com/NVIDIA/nvbandwidth"
         }
     },
     "dcgm": {
@@ -385,20 +422,26 @@
             "sha256": "88be3211a433e1d12d7212761a06b227e6bed551649abd62d4eebeae116ab26c"
         },
         "azurelinux3.0": {
-            "version": "2.11.8.8",
-            "sha256": "e02b34ae50a81d7e7d8d0e3bd2b9abae1294febe489b398974186f7723149ae1"
+            "x86_64":{
+                "version": "2.11.8.8",
+                "sha256": "e02b34ae50a81d7e7d8d0e3bd2b9abae1294febe489b398974186f7723149ae1"
+            }
         }
     },
     "waagent_extensions": {
         "azurelinux3.0": {
-            "version": "2.12.0.2",
-            "sha256": "e02b34ae50a81d7e7d8d0e3bd2b9abae1294febe489b398974186f7723149ae1"
+            "x86_64":{
+                "version": "2.12.0.2",
+                "sha256": "e02b34ae50a81d7e7d8d0e3bd2b9abae1294febe489b398974186f7723149ae1"
+            }
         }
     },
     "moby_engine": {
         "azurelinux3.0": {
-            "version": "25.0.3-11",
-            "sha256": "ec5629890e1c03bd88bc405e440680584a1dc6c06696025084c2641dc9b4f24b"
+            "x86_64":{
+                "version": "25.0.3-11",
+                "sha256": "ec5629890e1c03bd88bc405e440680584a1dc6c06696025084c2641dc9b4f24b"
+            }
         }
     },
     "moneo": {
@@ -409,20 +452,28 @@
     },
     "pssh": {
         "almalinux8.7": {
-            "version": "2.3.1-29",
-            "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            "x86_64":{
+                "version": "2.3.1-29",
+                "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            }
         },
         "almalinux8.10": {
-            "version": "2.3.1-29",
-            "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            "x86_64":{
+                "version": "2.3.1-29",
+                "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            }
         },
         "rhel8.10": {
-            "version": "2.3.1-29",
-            "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            "x86_64":{
+                "version": "2.3.1-29",
+                "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            }
         },
         "azurelinux3.0": {
-            "version": "2.3.1-29",
-            "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            "x86_64":{
+                "version": "2.3.1-29",
+                "sha256": "a9fee8148837b1cad15359028f85bc9ce688fd727e0ff13441972fdacf6be282"
+            }
         }
     },
     "amd": {
@@ -464,31 +515,41 @@
     },
     "aznfs": {
         "azurelinux3.0": {
-            "version": "2.0.8",
-            "sha256": "5f2e0947ba750a02cb7d4323ed8d0eb2c83c3df33674b6e14f6fa72f88cf267f"
+            "x86_64":{
+                "version": "2.0.8",
+                "sha256": "5f2e0947ba750a02cb7d4323ed8d0eb2c83c3df33674b6e14f6fa72f88cf267f"
+            }
         }
     },
     "rocm": {
         "ubuntu22.04": {
-            "version": "6.2.2",
-            "url": "https://repo.radeon.com/amdgpu-install/6.2.2/ubuntu/jammy/amdgpu-install_6.2.60202-1_all.deb",
-            "sha256": "e997d1134d6e0c95dd71dd9453e78ded89016da7da6c6e8e0fdb4f204755b1e8"
+            "x86_64":{
+                "version": "6.2.2",
+                "url": "https://repo.radeon.com/amdgpu-install/6.2.2/ubuntu/jammy/amdgpu-install_6.2.60202-1_all.deb",
+                "sha256": "e997d1134d6e0c95dd71dd9453e78ded89016da7da6c6e8e0fdb4f204755b1e8"
+            }
         },
         "azurelinux3.0": {
-            "version": "6.2.2.1",
-            "amdgpu": "6.8.5.60202_2078359-7"
+            "x86_64":{
+                "version": "6.2.2.1",
+                "amdgpu": "6.8.5.60202_2078359-7"
+            }
         }
     },
     "rccl": {
         "ubuntu22.04": {
-            "version": "2.20.5",
-            "url": "https://github.com/ROCm/rccl/archive/refs/tags/rocm-6.2.2.tar.gz",
-            "sha256": "2f4fdc54841e810e3f02ad96bbd113ef8fd2fca6f268ad12aa603c440737a22e"
+            "x86_64":{
+                "version": "2.20.5",
+                "url": "https://github.com/ROCm/rccl/archive/refs/tags/rocm-6.2.2.tar.gz",
+                "sha256": "2f4fdc54841e810e3f02ad96bbd113ef8fd2fca6f268ad12aa603c440737a22e"
+            }
         },
         "azurelinux3.0": {
-            "version": "2.20.5",
-            "url": "https://github.com/ROCm/rccl/archive/refs/tags/rocm-6.2.2.tar.gz",
-            "sha256": "2f4fdc54841e810e3f02ad96bbd113ef8fd2fca6f268ad12aa603c440737a22e"
+            "x86_64":{
+                "version": "2.20.5",
+                "url": "https://github.com/ROCm/rccl/archive/refs/tags/rocm-6.2.2.tar.gz",
+                "sha256": "2f4fdc54841e810e3f02ad96bbd113ef8fd2fca6f268ad12aa603c440737a22e"
+            }
         }
     }
 }

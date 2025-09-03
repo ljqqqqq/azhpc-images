@@ -4,6 +4,7 @@ set -ex
 source ${COMMON_DIR}/utilities.sh
 
 # Load gcc
+SKU=$1
 set CC=/usr/bin/gcc
 set GCC=/usr/bin/gcc
 
@@ -71,20 +72,20 @@ cd ..
 $COMMON_DIR/write_component_version.sh "OMPI" ${OMPI_VERSION}
 
 
-if [ "$1" = "GB200" ]; then
+if [[ "$SKU" != "GB200" ]]; then
     # Install Intel MPI
-    impi_metadata=$(get_component_config "impi")
-    IMPI_VERSION=$(jq -r '.version' <<< $impi_metadata)
-    IMPI_SHA256=$(jq -r '.sha256' <<< $impi_metadata)
-    IMPI_DOWNLOAD_URL=$(jq -r '.url' <<< $impi_metadata)
+    IMPI_METADATA=$(get_component_config "impi")
+    IMPI_VERSION=$(jq -r '.version' <<< $IMPI_METADATA)
+    IMPI_SHA256=$(jq -r '.sha256' <<< $IMPI_METADATA)
+    IMPI_DOWNLOAD_URL=$(jq -r '.url' <<< $IMPI_METADATA)
     IMPI_OFFLINE_INSTALLER=$(basename $IMPI_DOWNLOAD_URL)
 
     $COMMON_DIR/download_and_verify.sh $impi_download_url $impi_sha256
-    bash $impi_offline_installer -s -a -s --eula accept
+    bash $IMPI_OFFLINE_INSTALLER -s -a -s --eula accept
 
-    impi_2021_version=${impi_version:0:-2}
-    mv ${install_prefix}/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/mpi ${install_prefix}/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/impi
-    $COMMON_DIR/write_component_version.sh "IMPI" ${impi_version}
+    impi_2021_version=${IMPI_VERSION:0:-2}
+    mv ${INSTALL_PREFIX}/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/mpi ${INSTALL_PREFIX}/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/impi
+    $COMMON_DIR/write_component_version.sh "IMPI" ${IMPI_VERSION}
 fi
 
 
@@ -147,7 +148,7 @@ setenv          MPI_HOME        /opt/openmpi-${OMPI_VERSION}
 EOF
 
 #IntelMPI-v2021
-if [ "$1" = "GB200" ]; then
+if [ "$SKU" != "GB200" ]; then
     cat << EOF >> ${mpi_module_files_directory}/impi_${impi_2021_version}
     #%Module 1.0
     #
@@ -164,13 +165,13 @@ EOF
 fi
 
 # Create symlinks for modulefiles
-ln -s ${mpi_module_files_directory}/hpcx-${hpcx_version} ${mpi_module_files_directory}/hpcx
-ln -s ${mpi_module_files_directory}/hpcx-pmix-${hpcx_version} ${mpi_module_files_directory}/hpcx-pmix
-ln -s ${mpi_module_files_directory}/mvapich2-${mvapich2_version} ${mpi_module_files_directory}/mvapich2
-ln -s ${mpi_module_files_directory}/openmpi-${ompi_version} ${mpi_module_files_directory}/openmpi
+ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-${HPCX_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/hpcx
+ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix-${HPCX_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix
+ln -s ${MPI_MODULE_FILES_DIRECTORY}/mvapich2-${MVAPICH2_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/mvapich2
+ln -s ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/openmpi
 
-if [ "$1" = "GB200" ]; then
-    ln -s ${mpi_module_files_directory}/impi_${impi_2021_version} ${mpi_module_files_directory}/impi-2021
+if [ "$SKU" != "GB200" ]; then
+    ln -s ${MPI_MODULE_FILES_DIRECTORY}/impi_${impi_2021_version} ${MPI_MODULE_FILES_DIRECTORY}/impi-2021
 fi
 
 # cleanup downloaded tarballs and other installation files/folders

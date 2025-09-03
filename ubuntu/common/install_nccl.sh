@@ -21,13 +21,15 @@ pushd /tmp
 wget ${NCCL_DOWNLOAD_URL}
 tar -xvf ${TARBALL}
 
+arch=$(dpkg --print-architecture)
+
 pushd nccl-${NCCL_VERSION}
 make -j src.build
 make pkg.debian.build
 pushd build/pkg/deb/
-dpkg -i libnccl2_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_amd64.deb
+dpkg -i libnccl2_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_${arch}.deb
 apt-mark hold libnccl2
-dpkg -i libnccl-dev_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_amd64.deb
+dpkg -i libnccl-dev_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_${arch}.deb
 apt-mark hold libnccl-dev
 popd
 popd
@@ -38,6 +40,12 @@ apt install -y zlib1g-dev libibverbs-dev
 git clone https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
 pushd nccl-rdma-sharp-plugins
 git checkout ${NCCL_RDMA_SHARP_COMMIT}
+if [ "$1" = "GB200" ]; then
+    # To get around configure.ac:44: error: required file './ltmain.sh' not found
+    # Run libtoolize
+    apt install libtool -y
+    libtoolize
+fi
 ./autogen.sh
 ./configure --prefix=/usr/local/nccl-rdma-sharp-plugins --with-cuda=/usr/local/cuda
 make

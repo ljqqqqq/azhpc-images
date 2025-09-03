@@ -51,7 +51,7 @@ if [ "$GPU" = "NVIDIA" ]; then
     ./install_nvidiagpudriver.sh
     
     # Install NCCL
-    $UBUNTU_COMMON_DIR/install_nccl.sh
+    $UBUNTU_COMMON_DIR/install_nccl.sh "$SKU"
 
     # Install nvshmem
     ./install_nvshmem.sh
@@ -60,7 +60,7 @@ if [ "$GPU" = "NVIDIA" ]; then
     $UBUNTU_COMMON_DIR/install_docker.sh
     
     # Install nvbandwidth tool
-    ./install_nvbandwidth_tool.sh
+    $UBUNTU_COMMON_DIR/install_nvbandwidth_tool.sh
 fi
 
 if [ "$GPU" = "AMD" ]; then
@@ -82,7 +82,7 @@ if [ "$GPU" = "NVIDIA" ]; then
 fi
 
 # install Intel libraries
-if [ "$ARCH" != "aarch64" ]; then
+if [ "$SKU" != "GB200" ]; then
     $COMMON_DIR/install_intel_libs.sh
 fi
 
@@ -93,10 +93,8 @@ fi
 $COMMON_DIR/install_azure_persistent_rdma_naming.sh
 
 # optimizations
-$UBUNTU_COMMON_DIR/hpc_tuning.sh
+$UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
 
-# Azure Linux Agent
-$UBUNTU_COMMON_DIR/install_waagent.sh
 
 # Install AZNFS Mount Helper
 # $COMMON_DIR/install_aznfs.sh
