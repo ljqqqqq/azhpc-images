@@ -40,7 +40,7 @@ apt install -y zlib1g-dev libibverbs-dev
 git clone https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
 pushd nccl-rdma-sharp-plugins
 git checkout ${NCCL_RDMA_SHARP_COMMIT}
-if [ "$1" = "GB200" ]; then
+if [[ "$ARCH" != "aarch64" ]]; then
     # To get around configure.ac:44: error: required file './ltmain.sh' not found
     # Run libtoolize
     apt install libtool -y

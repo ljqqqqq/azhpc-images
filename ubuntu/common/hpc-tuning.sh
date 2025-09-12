@@ -3,7 +3,7 @@ set -ex
 
 SKU=$1
 # Install Dependencies
-if [[ "$SKU" == "GB200" ]]; then
+if [[ $DISTRIBUTION == "ubuntu24.04" ]]; then
     apt install python3-netifaces -y
 else
     pip3 install -U netifaces

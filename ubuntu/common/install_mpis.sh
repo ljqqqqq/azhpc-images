@@ -72,7 +72,7 @@ cd ..
 $COMMON_DIR/write_component_version.sh "OMPI" ${OMPI_VERSION}
 
 
-if [[ "$SKU" != "GB200" ]]; then
+if [[ "$ARCH" != "aarch64" ]]; then
     # Install Intel MPI
     IMPI_METADATA=$(get_component_config "impi")
     IMPI_VERSION=$(jq -r '.version' <<< $IMPI_METADATA)
@@ -148,7 +148,7 @@ setenv          MPI_HOME        /opt/openmpi-${OMPI_VERSION}
 EOF
 
 #IntelMPI-v2021
-if [ "$SKU" != "GB200" ]; then
+if [[ "$ARCH" != "aarch64" ]]; then
     cat << EOF >> ${mpi_module_files_directory}/impi_${impi_2021_version}
     #%Module 1.0
     #
@@ -170,7 +170,7 @@ ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix-${HPCX_VERSION} ${MPI_MODULE_FILES
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/mvapich2-${MVAPICH2_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/mvapich2
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/openmpi
 
-if [ "$SKU" != "GB200" ]; then
+if [[ "$ARCH" != "aarch64" ]]; then
     ln -s ${MPI_MODULE_FILES_DIRECTORY}/impi_${impi_2021_version} ${MPI_MODULE_FILES_DIRECTORY}/impi-2021
 fi
 

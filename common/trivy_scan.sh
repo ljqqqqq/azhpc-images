@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
+SKU=$1
+
 TRIVY_REPORT_DIRNAME=/opt/azurehpc
 TRIVY_REPORT_ROOTFS_JSON_PATH=${TRIVY_REPORT_DIRNAME}/trivy-report-rootfs.json
 
 TRIVY_VERSION="0.64.1"
-TRIVY_ARCH="Linux-64bit"
+
+if [[ "$ARCH" != "aarch64" ]]; then
+    TRIVY_ARCH="Linux-ARM"
+else
+    TRIVY_ARCH="Linux-64bit"
+fi
 
 TRIVY_DB_REPOSITORIES="mcr.microsoft.com/mirror/ghcr/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db"
 

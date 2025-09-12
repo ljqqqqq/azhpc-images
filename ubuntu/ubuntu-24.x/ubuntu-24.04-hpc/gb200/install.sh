@@ -38,20 +38,20 @@ source ./set_properties.sh
 # $UBUNTU_COMMON_DIR/install_lustre_client.sh
 
 # install DOCA OFED
-$UBUNTU_COMMON_DIR/install_doca.sh "$SKU"
+$UBUNTU_COMMON_DIR/install_doca.sh
 
 # install PMIX
-$UBUNTU_COMMON_DIR/install_pmix.sh "$SKU"
+$UBUNTU_COMMON_DIR/install_pmix.sh
 
 # install mpi libraries
-$UBUNTU_COMMON_DIR/install_mpis.sh "$SKU"
+$UBUNTU_COMMON_DIR/install_mpis.sh
 
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
     ./install_nvidiagpudriver.sh
     
     # Install NCCL
-    $UBUNTU_COMMON_DIR/install_nccl.sh "$SKU"
+    $UBUNTU_COMMON_DIR/install_nccl.sh
 
     # Install nvshmem
     ./install_nvshmem.sh
@@ -82,7 +82,7 @@ if [ "$GPU" = "NVIDIA" ]; then
 fi
 
 # install Intel libraries
-if [ "$SKU" != "GB200" ]; then
+if [[ "$ARCH" != "aarch64" ]]; then
     $COMMON_DIR/install_intel_libs.sh
 fi
 
@@ -111,7 +111,7 @@ $COMMON_DIR/copy_test_file.sh
 # install Azure/NHC Health Checks
 # $COMMON_DIR/install_health_checks.sh
 
-# disable cloud-init
+#disable cloud-init
 $UBUNTU_COMMON_DIR/disable_cloudinit.sh
 
 # diable auto kernel updates
@@ -130,3 +130,6 @@ if [ "$GPU" = "AMD" ]; then
     #install rccl and rccl-tests
     ./install_rccl.sh
 fi
+
+# scan vulnerabilities using Trivy
+$COMMON_DIR/trivy_scan.sh

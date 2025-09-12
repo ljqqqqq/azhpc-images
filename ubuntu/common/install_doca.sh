@@ -14,7 +14,7 @@ $COMMON_DIR/download_and_verify.sh $DOCA_URL $DOCA_SHA256
 dpkg -i $DOCA_FILE
 apt-get update
 
-if [ "$1" = "GB200" ]; then
+if [[ "$ARCH" == "aarch64" ]]; then
     # Unset ARCH set by set_properties.sh. 
     # ARCH == uname -m (aarch64)
     # messes up some doca-ofed package post install scripts,

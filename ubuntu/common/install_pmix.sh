@@ -16,7 +16,7 @@ elif [ $UBUNTU_VERSION == 20.04 ]; then
 else echo "$UBUNTU_VERSION not supported for pmix installation."
 fi
 
-if [ "$1" = "GB200" ]; then
+if [[ "$ARCH" == "aarch64" ]]; then
     echo "deb [arch=arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/repos/$REPO/ insiders main" > /etc/apt/sources.list.d/slurm.list
 else
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/repos/$REPO/ insiders main" > /etc/apt/sources.list.d/slurm.list
