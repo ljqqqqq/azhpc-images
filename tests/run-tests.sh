@@ -28,6 +28,8 @@ function test_service {
         check_sku_customization) verify_sku_customization_service;;
         check_nvidia_fabricmanager) verify_nvidia_fabricmanager_service;;
         check_sunrpc_tcp_settings) verify_sunrpc_tcp_settings_service;;
+        check_nvidia_imex) verify_nvidia_imex_service;;
+        check_azure_persistent_rdma_naming) verify_azure_persistent_rdma_naming_service;;
         *) ;;
     esac
 }
@@ -50,6 +52,8 @@ function test_component {
         check_aocc) verify_aocc_installation;;
         check_docker) verify_docker_installation;;
         check_dcgm) verify_dcgm_installation;;
+        check_nvlink) verify_nvlink_setup;;
+        check_nvbandwidth) verify_nvbandwidth_setup;;
         * ) ;;
     esac
 }
@@ -103,8 +107,11 @@ function set_test_matrix {
     fi
     export distro=$(. /etc/os-release;echo $ID$VERSION_ID)
     test_matrix_file=$(jq -r . $HPC_ENV/test/test-matrix_${gpu_platform}.json)
-    export TEST_MATRIX=$(jq -r '."'"$distro"'" // empty' <<< $test_matrix_file)
-
+    case ${VMSIZE} in
+        standard_nd128isr_ndr_gb200_v6) sku="gb200";;
+        *) sku="common";;
+    esac
+    export TEST_MATRIX=$(jq -r --arg d "$distro" --arg s "$sku" '(.[$d] // empty) | (.[$s] // empty)' <<< "$test_matrix_file")
     if [[ -z "$TEST_MATRIX" ]]; then
         echo "*****No test matrix found for distribution $distro!*****"
         exit 1

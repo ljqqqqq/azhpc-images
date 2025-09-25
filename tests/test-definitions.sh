@@ -39,7 +39,11 @@ function verify_ofed_installation {
 # verify IB device status
 function verify_ib_device_status {
     # verify IB device is listed
-    lspci | grep "Infiniband controller\|Network controller"
+    if [[ "${VMSIZE}" == "standard_nd128isr_ndr_gb200_v6" ]]; then
+        lspci | grep "Infiniband controller\|Network controller\|Ethernet controller"
+    else
+        lspci | grep "Infiniband controller\|Network controller"
+    fi
     check_exit_code "IB device is listed" "IB device not found"
 
     # verify IB device is up
@@ -155,6 +159,18 @@ function verify_nccl_installation {
             -x LD_LIBRARY_PATH=/usr/local/nccl-rdma-sharp-plugins/lib:$LD_LIBRARY_PATH \
             -mca coll_hcoll_enable 0 \
             -x UCX_TLS=tcp \
+            -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
+            -x NCCL_SOCKET_IFNAME=eth0 \
+            -x NCCL_DEBUG=WARN \
+            -x NCCL_NET_GDR_LEVEL=5 \
+            /opt/nccl-tests/build/all_reduce_perf -b1K -f2 -g1 -e 4G;;
+        standard_nd128isr_ndr_gb200_v6) mpirun -np 4 \
+            --allow-run-as-root \
+            --map-by ppr:4:node \
+            -x LD_LIBRARY_PATH=/usr/local/nccl-rdma-sharp-plugins/lib:$LD_LIBRARY_PATH \
+            -mca coll_hcoll_enable 0 \
+            -x UCX_TLS=rc \
+            -x UCX_IB_GID_INDEX=0 \
             -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
             -x NCCL_SOCKET_IFNAME=eth0 \
             -x NCCL_DEBUG=WARN \
@@ -327,7 +343,7 @@ function verify_dcgm_installation {
 
 function verify_sku_customization_service {
     # Check if the SKU customization service is active
-    local valid_sizes="standard_nc.*ads_a100_v4|standard_nd96.*v4|standard_nd40rs_v2|standard_hb176.*v4|standard_nd96is*_h100_v5"
+    local valid_sizes="standard_nc.*ads_a100_v4|standard_nd96.*v4|standard_nd40rs_v2|standard_hb176.*v4|standard_nd96is*_h100_v5|standard_nd128is*_ndr_gb200_v6"
     if [[ "${VMSIZE}" =~ ^($valid_sizes)$ ]]
     then
         systemctl is-active --quiet sku-customizations
@@ -349,4 +365,52 @@ function verify_sunrpc_tcp_settings_service {
     # Check if the sunrpc TCP settings service is active
     systemctl is-active --quiet sunrpc_tcp_settings
     check_exit_code "sunrpc TCP settings service is active" "sunrpc TCP settings service is inactive/dead!"
+}
+
+
+function verify_nvidia_imex_service {
+    # Check if the NVIDIA Imex service is active
+    local valid_sizes="standard_nd128isr_ndr_gb200_v6"
+    if [[ "${VMSIZE}" =~ ^($valid_sizes)$ ]]
+    then
+        check_exists /usr/lib/systemd/system/nvidia-imex.service
+        # systemctl is-active --quiet nvidia-imex
+        # check_exit_code "NVIDIA Imex is active" "NVIDIA Imex is inactive/dead!"
+    fi
+
+    # Check if nvidia caps imex channel exists
+    ls -al /dev/nvidia-caps-imex-channels/channel0
+    check_exit_code "NVIDIA Caps Imex channel exists" "NVIDIA Caps Imex channel does not exist!"
+}
+
+
+function verify_azure_persistent_rdma_naming_service {
+    # Check if the azure persistent rdma naming service is active
+    systemctl is-active --quiet azure_persistent_rdma_naming
+    check_exit_code "Azure persistent rdma naming service is active" "Azure persistent rdma naming service is inactive/dead!"
+}
+
+function verify_nvbandwidth_setup {
+    # Verify nvbandwidth setup
+    /opt/nvidia/nvbandwidth/nvbandwidth
+    check_exit_code "NV Bandwidth Installed!" "Issue with NV Bandwidth installation!"
+}
+
+function verify_nvlink_setup {
+    # Verify nvlink setup
+    nvidia-smi nvlink --status
+    check_exit_code "NVLINK Reports Healthy" "Unhealthy NVLINK setup!"
+
+    line_count=$(nvidia-smi nvlink -s|grep '50 GB/s' | wc -l)
+    check_exit_code "NVLINK Reports Healthy line count of $line_count" "Unhealthy NVLINK setup!"
+
+    nvidia_smi_output=$(nvidia-smi -q | grep 'Fabric' -A 4)
+    echo "$nvidia_smi_output"
+    echo "$nvidia_smi_output" | grep -q 'N/A'
+    if [ $? -eq 0 ]; then
+        echo "*** Error - Unhealthy NVLINK setup!!"
+        exit -1
+    else
+        echo "[OK] : NVLINK setup is healthy"
+    fi
 }
