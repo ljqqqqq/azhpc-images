@@ -4,7 +4,6 @@ set -ex
 source ${COMMON_DIR}/utilities.sh
 
 # Load gcc
-SKU=$1
 set CC=/usr/bin/gcc
 set GCC=/usr/bin/gcc
 
@@ -36,23 +35,25 @@ $COMMON_DIR/write_component_version.sh "HPCX" $HPCX_VERSION
 ${HPCX_PATH}/utils/hpcx_rebuild.sh --with-hcoll --ompi-extra-config "--with-pmix=${PMIX_PATH} --enable-orterun-prefix-by-default"
 cp -r ${HPCX_PATH}/ompi/tests ${HPCX_PATH}/hpcx-rebuild
 
-# Install MVAPICH2
-mvapich2_metadata=$(get_component_config "mvapich2")
-MVAPICH2_VERSION=$(jq -r '.version' <<< $mvapich2_metadata)
-MVAPICH2_SHA256=$(jq -r '.sha256' <<< $mvapich2_metadata)
-MVAPICH2_DOWNLOAD_URL="http://mvapich.cse.ohio-state.edu/download/mvapich/mv2/mvapich2-${MVAPICH2_VERSION}.tar.gz"
-TARBALL=$(basename $MVAPICH2_DOWNLOAD_URL)
-MVAPICH2_FOLDER=$(basename $MVAPICH2_DOWNLOAD_URL .tar.gz)
+if [[ "${DISTRIBUTION}" != "ubuntu24.04" ]]; then
+    # Install MVAPICH2
+    mvapich2_metadata=$(get_component_config "mvapich2")
+    MVAPICH2_VERSION=$(jq -r '.version' <<< $mvapich2_metadata)
+    MVAPICH2_SHA256=$(jq -r '.sha256' <<< $mvapich2_metadata)
+    MVAPICH2_DOWNLOAD_URL="http://mvapich.cse.ohio-state.edu/download/mvapich/mv2/mvapich2-${MVAPICH2_VERSION}.tar.gz"
+    TARBALL=$(basename $MVAPICH2_DOWNLOAD_URL)
+    MVAPICH2_FOLDER=$(basename $MVAPICH2_DOWNLOAD_URL .tar.gz)
 
-$COMMON_DIR/download_and_verify.sh $MVAPICH2_DOWNLOAD_URL $MVAPICH2_SHA256
-tar -xvf ${TARBALL}
-cd ${MVAPICH2_FOLDER}
-# Error exclusive to Ubuntu 22.04
-# configure: error: The Fortran compiler gfortran will not compile files that call
-# the same routine with arguments of different types.
-./configure $(if [[ ${DISTRIBUTION} == "ubuntu22.04" ]]; then echo "FFLAGS=-fallow-argument-mismatch"; fi) --prefix=${INSTALL_PREFIX}/mvapich2-${MVAPICH2_VERSION} --enable-g=none --enable-fast=yes && make -j$(nproc) && make install
-cd ..
-$COMMON_DIR/write_component_version.sh "MVAPICH2" ${MVAPICH2_VERSION}
+    $COMMON_DIR/download_and_verify.sh $MVAPICH2_DOWNLOAD_URL $MVAPICH2_SHA256
+    tar -xvf ${TARBALL}
+    cd ${MVAPICH2_FOLDER}
+    # Error exclusive to Ubuntu 22.04
+    # configure: error: The Fortran compiler gfortran will not compile files that call
+    # the same routine with arguments of different types.
+    ./configure $(if [[ ${DISTRIBUTION} == "ubuntu22.04" ]]; then echo "FFLAGS=-fallow-argument-mismatch"; fi) --prefix=${INSTALL_PREFIX}/mvapich2-${MVAPICH2_VERSION} --enable-g=none --enable-fast=yes && make -j$(nproc) && make install
+    cd ..
+    $COMMON_DIR/write_component_version.sh "MVAPICH2" ${MVAPICH2_VERSION}
+fi
 
 # Install Open MPI
 ompi_metadata=$(get_component_config "ompi")
@@ -80,11 +81,11 @@ if [[ "$ARCH" != "aarch64" ]]; then
     IMPI_DOWNLOAD_URL=$(jq -r '.url' <<< $IMPI_METADATA)
     IMPI_OFFLINE_INSTALLER=$(basename $IMPI_DOWNLOAD_URL)
 
-    $COMMON_DIR/download_and_verify.sh $impi_download_url $impi_sha256
+    $COMMON_DIR/download_and_verify.sh $IMPI_DOWNLOAD_URL $IMPI_SHA256
     bash $IMPI_OFFLINE_INSTALLER -s -a -s --eula accept
 
-    impi_2021_version=${IMPI_VERSION:0:-2}
-    mv ${INSTALL_PREFIX}/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/mpi ${INSTALL_PREFIX}/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/impi
+    IMPI_2021_VERSION=${IMPI_VERSION:0:-2}
+    mv ${INSTALL_PREFIX}/intel/oneapi/mpi/${IMPI_2021_VERSION}/etc/modulefiles/mpi ${INSTALL_PREFIX}/intel/oneapi/mpi/${IMPI_2021_VERSION}/etc/modulefiles/impi
     $COMMON_DIR/write_component_version.sh "IMPI" ${IMPI_VERSION}
 fi
 
@@ -113,22 +114,24 @@ conflict        mpi
 module load ${HPCX_PATH}/modulefiles/hpcx-rebuild
 EOF
 
-# MVAPICH2
-cat << EOF >> ${MPI_MODULE_FILES_DIRECTORY}/mvapich2-${MVAPICH2_VERSION}
-#%Module 1.0
-#
-#  MVAPICH2 ${MVAPICH2_VERSION}
-#
-conflict        mpi
-prepend-path    PATH            /opt/mvapich2-${MVAPICH2_VERSION}/bin
-prepend-path    LD_LIBRARY_PATH /opt/mvapich2-${MVAPICH2_VERSION}/lib
-prepend-path    MANPATH         /opt/mvapich2-${MVAPICH2_VERSION}/share/man
-setenv          MPI_BIN         /opt/mvapich2-${MVAPICH2_VERSION}/bin
-setenv          MPI_INCLUDE     /opt/mvapich2-${MVAPICH2_VERSION}/include
-setenv          MPI_LIB         /opt/mvapich2-${MVAPICH2_VERSION}/lib
-setenv          MPI_MAN         /opt/mvapich2-${MVAPICH2_VERSION}/share/man
-setenv          MPI_HOME        /opt/mvapich2-${MVAPICH2_VERSION}
+if [[ "${DISTRIBUTION}" != "ubuntu24.04" ]]; then
+    # MVAPICH2
+    cat << EOF >> ${MPI_MODULE_FILES_DIRECTORY}/mvapich2-${MVAPICH2_VERSION}
+    #%Module 1.0
+    #
+    #  MVAPICH2 ${MVAPICH2_VERSION}
+    #
+    conflict        mpi
+    prepend-path    PATH            /opt/mvapich2-${MVAPICH2_VERSION}/bin
+    prepend-path    LD_LIBRARY_PATH /opt/mvapich2-${MVAPICH2_VERSION}/lib
+    prepend-path    MANPATH         /opt/mvapich2-${MVAPICH2_VERSION}/share/man
+    setenv          MPI_BIN         /opt/mvapich2-${MVAPICH2_VERSION}/bin
+    setenv          MPI_INCLUDE     /opt/mvapich2-${MVAPICH2_VERSION}/include
+    setenv          MPI_LIB         /opt/mvapich2-${MVAPICH2_VERSION}/lib
+    setenv          MPI_MAN         /opt/mvapich2-${MVAPICH2_VERSION}/share/man
+    setenv          MPI_HOME        /opt/mvapich2-${MVAPICH2_VERSION}
 EOF
+fi
 
 # OpenMPI
 cat << EOF >> ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION}
@@ -149,29 +152,32 @@ EOF
 
 #IntelMPI-v2021
 if [[ "$ARCH" != "aarch64" ]]; then
-    cat << EOF >> ${mpi_module_files_directory}/impi_${impi_2021_version}
+    cat << EOF >> ${MPI_MODULE_FILES_DIRECTORY}/impi_${IMPI_2021_VERSION}
     #%Module 1.0
     #
-    #  Intel MPI ${impi_2021_version}
+    #  Intel MPI ${IMPI_2021_VERSION}
     #
     conflict        mpi
-    module load /opt/intel/oneapi/mpi/${impi_2021_version}/etc/modulefiles/impi/${impi_2021_version}
-    setenv          MPI_BIN         /opt/intel/oneapi/mpi/${impi_2021_version}/bin
-    setenv          MPI_INCLUDE     /opt/intel/oneapi/mpi/${impi_2021_version}/include
-    setenv          MPI_LIB         /opt/intel/oneapi/mpi/${impi_2021_version}/lib
-    setenv          MPI_MAN         /opt/intel/oneapi/mpi/${impi_2021_version}/share/man
-    setenv          MPI_HOME        /opt/intel/oneapi/mpi/${impi_2021_version}
+    module load /opt/intel/oneapi/mpi/${IMPI_2021_VERSION}/etc/modulefiles/impi/${IMPI_2021_VERSION}
+    setenv          MPI_BIN         /opt/intel/oneapi/mpi/${IMPI_2021_VERSION}/bin
+    setenv          MPI_INCLUDE     /opt/intel/oneapi/mpi/${IMPI_2021_VERSION}/include
+    setenv          MPI_LIB         /opt/intel/oneapi/mpi/${IMPI_2021_VERSION}/lib
+    setenv          MPI_MAN         /opt/intel/oneapi/mpi/${IMPI_2021_VERSION}/share/man
+    setenv          MPI_HOME        /opt/intel/oneapi/mpi/${IMPI_2021_VERSION}
 EOF
 fi
 
 # Create symlinks for modulefiles
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-${HPCX_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/hpcx
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix-${HPCX_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix
-ln -s ${MPI_MODULE_FILES_DIRECTORY}/mvapich2-${MVAPICH2_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/mvapich2
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/openmpi
 
+if [[ "${DISTRIBUTION}" != "ubuntu24.04" ]]; then
+    ln -s ${MPI_MODULE_FILES_DIRECTORY}/mvapich2-${MVAPICH2_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/mvapich2
+fi
+
 if [[ "$ARCH" != "aarch64" ]]; then
-    ln -s ${MPI_MODULE_FILES_DIRECTORY}/impi_${impi_2021_version} ${MPI_MODULE_FILES_DIRECTORY}/impi-2021
+    ln -s ${MPI_MODULE_FILES_DIRECTORY}/impi_${IMPI_2021_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/impi-2021
 fi
 
 # cleanup downloaded tarballs and other installation files/folders

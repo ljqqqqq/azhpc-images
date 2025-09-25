@@ -66,7 +66,9 @@ function verify_common_components {
     verify_ofed_installation;
     verify_ib_device_status;
     verify_hpcx_installation;
-    verify_mvapich2_installation;
+    if [[ "${DISTRIBUTION}" != "ubuntu24.04" ]]; then
+        verify_mvapich2_installation;
+    fi
     verify_ompi_installation;
     verify_mkl_installation;
     verify_hpcdiag_installation;
@@ -118,10 +120,11 @@ function set_test_matrix {
     fi
 }
 
-function set_sku_configuration {
+function set_vm_properties {
     local metadata_endpoint="http://169.254.169.254/metadata/instance?api-version=2019-06-04"
     local vm_size=$(curl -H Metadata:true $metadata_endpoint | jq -r ".compute.vmSize")
     export VMSIZE=$(echo "$vm_size" | awk '{print tolower($0)}')
+    export DISTRIBUTION=$(. /etc/os-release;echo $ID$VERSION_ID)
 }
 
 # Function to set component versions from JSON file
@@ -166,7 +169,7 @@ set_module_files_path
 # Set component versions
 set_component_versions
 # Set current SKU
-set_sku_configuration
+set_vm_properties
 # Set test matrix
 set_test_matrix $1
 # Initiate test suite
