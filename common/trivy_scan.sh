@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-SKU=$1
 
 TRIVY_REPORT_DIRNAME=/opt/azurehpc
 TRIVY_REPORT_ROOTFS_JSON_PATH=${TRIVY_REPORT_DIRNAME}/trivy-report-rootfs.json
 
 TRIVY_VERSION="0.64.1"
 
-if [[ "$ARCH" != "aarch64" ]]; then
+if [[ "$ARCH" == "aarch64" ]]; then
     TRIVY_ARCH="Linux-ARM"
 else
     TRIVY_ARCH="Linux-64bit"
