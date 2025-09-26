@@ -35,7 +35,7 @@ source ./set_properties.sh
 ./install_utils.sh
 
 # install Lustre client
-# $UBUNTU_COMMON_DIR/install_lustre_client.sh
+$UBUNTU_COMMON_DIR/install_lustre_client.sh
 
 # install DOCA OFED
 $UBUNTU_COMMON_DIR/install_doca.sh
@@ -97,7 +97,7 @@ $UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
 
 
 # Install AZNFS Mount Helper
-# $COMMON_DIR/install_aznfs.sh
+$COMMON_DIR/install_aznfs.sh
 
 # copy test file
 $COMMON_DIR/copy_test_file.sh

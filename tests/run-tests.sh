@@ -72,9 +72,9 @@ function verify_common_components {
     if [[ "$VM_SIZE" != "standard_nd128isr_ndr_gb200_v6" ]]; then
         verify_mkl_installation;
         verify_hpcdiag_installation;
-        verify_aznfs_installation;
-        verify_lustre_installation;
     fi
+    verify_lustre_installation;
+    verify_aznfs_installation;
     verify_ompi_installation;
     
     verify_ipoib_status;
