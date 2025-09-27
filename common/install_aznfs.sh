@@ -7,7 +7,7 @@ source ${COMMON_DIR}/utilities.sh
 # prefer PMC when possible
 if [[ $DISTRIBUTION == *"ubuntu"* ]]
 then
-    apt install -y aznfs
+    DEBIAN_FRONTEND=noninteractive apt install -y aznfs
 elif [[ $DISTRIBUTION == *"almalinux"* || $DISTRIBUTION == *"rhel"* ]]
 then
     dnf install -y aznfs
