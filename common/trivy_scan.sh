@@ -8,7 +8,7 @@ TRIVY_REPORT_ROOTFS_JSON_PATH=${TRIVY_REPORT_DIRNAME}/trivy-report-rootfs.json
 TRIVY_VERSION="0.64.1"
 
 if [[ "$ARCH" == "aarch64" ]]; then
-    TRIVY_ARCH="Linux-ARM"
+    TRIVY_ARCH="Linux-ARM64"
 else
     TRIVY_ARCH="Linux-64bit"
 fi
