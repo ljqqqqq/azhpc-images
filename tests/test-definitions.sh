@@ -353,7 +353,7 @@ function verify_sku_customization_service {
 
 function verify_nvidia_fabricmanager_service {
     # Check if the NVIDIA Fabricmanager service is active
-    local valid_sizes="standard_nd96.*v4|standard_nd96is*_h100_v5"
+    local valid_sizes="standard_nd96.*v4|standard_nd96is*_h100_v5|standard_nd128is*_ndr_gb200_v6"
     if [[ "${VMSIZE}" =~ ^($valid_sizes)$ ]]
     then
         systemctl is-active --quiet nvidia-fabricmanager
