@@ -11,6 +11,9 @@ $UBUNTU_COMMON_DIR/install_nvidia_container_toolkit.sh
 systemctl enable docker
 systemctl restart docker
 
+# restart containerd service
+systemctl restart containerd
+
 # status of containerd snapshotter plugins
 ctr plugin ls
 
