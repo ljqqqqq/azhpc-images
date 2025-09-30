@@ -5,7 +5,7 @@
             "services": ["check_sku_customization", "check_nvidia_fabricmanager", "check_sunrpc_tcp_settings"]
         },
         "gb200":{
-            "components": ["check_cuda", "check_nccl", "check_docker", "check_dcgm", "check_nvlink", "check_nvbandwidth"],
+            "components": ["check_cuda", "check_nccl", "check_docker", "check_dcgm", "check_nvlink", "check_nvbandwidth", "check_nvloom"],
             "services": ["check_sku_customization", "check_nvidia_imex", "check_sunrpc_tcp_settings", "check_azure_persistent_rdma_naming"]
         }
     },

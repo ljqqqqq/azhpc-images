@@ -396,6 +396,15 @@ function verify_nvbandwidth_setup {
     check_exit_code "NV Bandwidth Installed!" "Issue with NV Bandwidth installation!"
 }
 
+function verify_nvloom_setup {
+    # Verify nvloom setup
+    module load mpi/hpcx
+    gpu_num=$(nvidia-smi -L | wc -l) 
+    mpirun -np $gpu_num /opt/nvidia/nvloom/nvloom_cli -s gpu-to-rack
+    check_exit_code "NV Loom Installed!" "Issue with NV Loom installation!"
+    module unload mpi/hpcx
+}
+
 function verify_nvlink_setup {
     # Verify nvlink setup
     nvidia-smi nvlink --status

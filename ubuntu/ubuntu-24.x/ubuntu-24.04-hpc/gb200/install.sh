@@ -55,7 +55,10 @@ if [ "$GPU" = "NVIDIA" ]; then
 
     # Install nvshmem
     ./install_nvshmem.sh
-    
+
+    # Install nvloom
+    ./install_nvloom.sh
+
     # Install NVIDIA docker container
     $UBUNTU_COMMON_DIR/install_docker.sh
     

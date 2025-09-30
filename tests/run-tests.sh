@@ -54,6 +54,7 @@ function test_component {
         check_dcgm) verify_dcgm_installation;;
         check_nvlink) verify_nvlink_setup;;
         check_nvbandwidth) verify_nvbandwidth_setup;;
+        check_nvloom) verify_nvloom_setup;;
         * ) ;;
     esac
 }
