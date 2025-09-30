@@ -1,1 +1,14 @@
-placeholder
+<system version="1">
+  <cpu numaid="0" affinity="00000000,00000000,ffffffff,ffffffff" arch="arm64" vendor="AMD" familyid="258" modelid="0">
+    <pci busid="0008:01:00.0" class="0x030200" link_speed="16.0 GT/s PCIe" link_width="1">
+    <pci busid="0009:01:00.0" class="0x030200" link_speed="16.0 GT/s PCIe" link_width="1">
+    <pci busid="0101:00:00.0" class="0x020700" link_speed="32.0 GT/s PCIe" link_width="0">
+    <pci busid="0102:00:00.0" class="0x020700" link_speed="32.0 GT/s PCIe" link_width="0">
+  </cpu>
+  <cpu numaid="1" affinity="ffffffff,ffffffff,00000000,00000000" arch="arm64" vendor="AMD" familyid="258" modelid="0">
+    <pci busid="0018:01:00.0" class="0x030200" link_speed="16.0 GT/s PCIe" link_width="1">
+    <pci busid="0019:01:00.0" class="0x030200" link_speed="16.0 GT/s PCIe" link_width="1">
+    <pci busid="0103:00:00.0" class="0x020700" link_speed="32.0 GT/s PCIe" link_width="0">
+    <pci busid="0104:00:00.0" class="0x020700" link_speed="32.0 GT/s PCIe" link_width="0">
+  </cpu>
+</system>
