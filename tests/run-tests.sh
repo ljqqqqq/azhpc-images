@@ -69,7 +69,7 @@ function verify_common_components {
     if [[ "${DISTRIBUTION}" != "ubuntu24.04" ]]; then
         verify_mvapich2_installation;
     fi
-    if [[ "$VM_SIZE" != "standard_nd128isr_ndr_gb200_v6" ]]; then
+    if [[ "$VMSIZE" != "standard_nd128isr_ndr_gb200_v6" ]]; then
         verify_mkl_installation;
         verify_hpcdiag_installation;
     fi
