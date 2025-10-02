@@ -100,7 +100,7 @@ $UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
 
 
 # Install AZNFS Mount Helper
-$COMMON_DIR/install_aznfs.sh
+# $COMMON_DIR/install_aznfs.sh
 
 # copy test file
 $COMMON_DIR/copy_test_file.sh
