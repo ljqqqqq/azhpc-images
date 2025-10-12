@@ -2,6 +2,8 @@
 set -ex
 
 # Install Moby Engine and CLI
+runc_version="1.1.15-ubuntu24.04u1"
+apt-get install moby-runc=$runc_version
 apt-get install -y moby-engine
 apt-get install -y moby-cli
 
@@ -18,5 +20,9 @@ ctr plugin ls
 docker_version=$(docker --version | awk -F' ' '{print $3}')
 $COMMON_DIR/write_component_version.sh "DOCKER" ${docker_version::-1}
 
-moby_version=$(apt list --installed | grep moby-engine | awk -F' ' '{print $2}')
-$COMMON_DIR/write_component_version.sh "MOBY_ENGINE" ${moby_version}
+moby_engine_version=$(apt list --installed | grep moby-engine | awk -F' ' '{print $2}')
+moby_cli_version=$(apt list --installed | grep moby-cli | awk -F' ' '{print $2}')
+moby_runc_version=$(apt list --installed | grep moby-runc | awk -F' ' '{print $2}')
+$COMMON_DIR/write_component_version.sh "MOBY_ENGINE" ${moby_engine_version}
+$COMMON_DIR/write_component_version.sh "MOBY_CLI" ${moby_cli_version}
+$COMMON_DIR/write_component_version.sh "MOBY_RUNC" ${moby_runc_version}
