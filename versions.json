@@ -40,6 +40,13 @@
                 "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host_2.10.0-093512-25.01-ubuntu2404_arm64.deb"
             }
         },
+        "ubuntu24.04-aks": {
+            "aarch64": {
+                "version": "2.10.0",
+                "sha256": "02a1ec08bc96f1d01082b37d86e2ee8972921468b7fb6e6a942667c4d6c287d8",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v2.10.0/host/doca-host_2.10.0-093512-25.01-ubuntu2404_arm64.deb"
+            }
+        },
         "almalinux8.7": {
             "x86_64": {
                 "version": "2.8.0",
@@ -192,6 +199,14 @@
                 }
             }
         },
+        "ubuntu24.04-aks": {
+            "aarch64":{
+                "driver": {
+                    "version": "580.95.05",
+                    "major_version": "580"
+                }
+            }
+        },        
         "almalinux8.7": {
             "x86_64":{
                 "driver": {

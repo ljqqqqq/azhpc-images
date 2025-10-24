@@ -16,4 +16,8 @@ apt-get update
 # Remove the downloaded package
 rm -rf packages-microsoft-prod.deb
 
-$UBUNTU_COMMON_DIR/install_utils.sh
+apt-get -y install build-essential
+apt-get -y install net-tools \
+                   infiniband-diags \
+                   dkms \
+                   jq 

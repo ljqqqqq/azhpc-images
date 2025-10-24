@@ -30,40 +30,18 @@ apt install -y jq
 
 # set properties
 source ./set_properties.sh
+export DISTRIBUTION=$DISTRIBUTION-aks
 
 # install utils
 ./install_utils.sh
 
-# install Lustre client
-$UBUNTU_COMMON_DIR/install_lustre_client.sh
-
 # install DOCA OFED
 $UBUNTU_COMMON_DIR/install_doca.sh
 
-# install PMIX
-$UBUNTU_COMMON_DIR/install_pmix.sh
-
-# install mpi libraries
-$UBUNTU_COMMON_DIR/install_mpis.sh
 
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
     ./install_nvidiagpudriver.sh
-    
-    # Install NCCL
-    $UBUNTU_COMMON_DIR/install_nccl.sh
-
-    # Install nvshmem
-    ./install_nvshmem.sh
-
-    # Install nvloom
-    ./install_nvloom.sh
-
-    # Install NVIDIA docker container
-    $UBUNTU_COMMON_DIR/install_docker.sh
-    
-    # Install nvbandwidth tool
-    $UBUNTU_COMMON_DIR/install_nvbandwidth_tool.sh
 fi
 
 if [ "$GPU" = "AMD" ]; then
@@ -79,31 +57,24 @@ rm -rf /tmp/MLNX_OFED_LINUX* /tmp/*conf*
 rm -rf /var/intel/ /var/cache/*
 rm -Rf -- */
 
-if [ "$GPU" = "NVIDIA" ]; then
-    # Install DCGM
-    $UBUNTU_COMMON_DIR/install_dcgm.sh
-fi
 
-# install Intel libraries
-if [[ "$ARCH" != "aarch64" ]]; then
-    $COMMON_DIR/install_intel_libs.sh
-fi
+
 
 # install diagnostic script
 # $COMMON_DIR/install_hpcdiag.sh
 
 # install persistent rdma naming
-$COMMON_DIR/install_azure_persistent_rdma_naming.sh
+# $COMMON_DIR/install_azure_persistent_rdma_naming.sh
 
 # optimizations
-$UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
+# $UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
 
 
 # Install AZNFS Mount Helper
 # $COMMON_DIR/install_aznfs.sh
 
 # copy test file
-$COMMON_DIR/copy_test_file.sh
+# $COMMON_DIR/copy_test_file.sh
 
 # install monitor tools
 # $COMMON_DIR/install_monitoring_tools.sh
@@ -115,7 +86,7 @@ $COMMON_DIR/copy_test_file.sh
 # $COMMON_DIR/install_health_checks.sh
 
 #disable cloud-init
-$UBUNTU_COMMON_DIR/disable_cloudinit.sh
+# $UBUNTU_COMMON_DIR/disable_cloudinit.sh
 
 # diable auto kernel updates
 # $UBUNTU_COMMON_DIR/disable_auto_upgrade.sh
