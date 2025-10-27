@@ -14,22 +14,8 @@ GDRCOPY_DISTRIBUTION=$(jq -r '.distribution' <<< $gdrcopy_metadata)
 cuda_metadata=$(get_component_config "cuda")
 CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
 
-git clone https://github.com/NVIDIA/gdrcopy.git
-pushd gdrcopy/packages/
-git checkout ${GDRCOPY_COMMIT}
 
-CUDA=/usr/local/cuda ./build-deb-packages.sh
-if [ "$ARCH" == "x86_64" ]; then
-    dpkg -i gdrdrv-dkms_${GDRCOPY_VERSION}_amd64.${GDRCOPY_DISTRIBUTION}.deb
-    dpkg -i libgdrapi_${GDRCOPY_VERSION}_amd64.${GDRCOPY_DISTRIBUTION}.deb
-    dpkg -i gdrcopy-tests_${GDRCOPY_VERSION}_amd64.${GDRCOPY_DISTRIBUTION}+cuda${CUDA_DRIVER_VERSION}.deb
-    dpkg -i gdrcopy_${GDRCOPY_VERSION}_amd64.${GDRCOPY_DISTRIBUTION}.deb
-else
-    dpkg -i gdrdrv-dkms_${GDRCOPY_VERSION}_arm64.${GDRCOPY_DISTRIBUTION}.deb
-    dpkg -i libgdrapi_${GDRCOPY_VERSION}_arm64.${GDRCOPY_DISTRIBUTION}.deb
-    dpkg -i gdrcopy-tests_${GDRCOPY_VERSION}_arm64.${GDRCOPY_DISTRIBUTION}+cuda${CUDA_DRIVER_VERSION}.deb
-    dpkg -i gdrcopy_${GDRCOPY_VERSION}_arm64.${GDRCOPY_DISTRIBUTION}.deb
-fi
-popd
+wget https://developer.download.nvidia.com/compute/redist/gdrcopy/CUDA%20${CUDA_DRIVER_VERSION}/${GDRCOPY_DISTRIBUTION}/${ARCH}/gdrdrv-dkms_${GDRCOPY_VERSION}-1_arm64.${GDRCOPY_DISTRIBUTION}.deb
+dpkg -i gdrdrv-dkms_${GDRCOPY_VERSION}-1_arm64.${GDRCOPY_DISTRIBUTION}.deb
 
 $COMMON_DIR/write_component_version.sh "GDRCOPY" ${GDRCOPY_VERSION}

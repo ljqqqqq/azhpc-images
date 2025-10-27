@@ -92,7 +92,7 @@ nvidia-smi
 nvidia_driver_version=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n 1)
 $COMMON_DIR/write_component_version.sh "NVIDIA" $nvidia_driver_version
 
-# $UBUNTU_COMMON_DIR/install_gdrcopy.sh
+$UBUNTU_COMMON_DIR/install_gdrcopy.sh
 
 # Install NVIDIA IMEX
 apt-get install nvidia-imex -y

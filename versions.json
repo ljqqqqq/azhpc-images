@@ -376,6 +376,13 @@
                 "distribution": "Ubuntu24_04"
             }
         },
+        "ubuntu24.04-aks": {
+            "aarch64":{
+                "version": "2.5.1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "Ubuntu24_04"
+            }
+        },       
         "almalinux8.7": {
             "x86_64":{
                 "version": "2.5-1",
