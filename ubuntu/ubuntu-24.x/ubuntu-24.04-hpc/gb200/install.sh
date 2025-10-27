@@ -69,6 +69,7 @@ rm -Rf -- */
 # optimizations
 # $UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
 
+$UBUNTU_COMMON_DIR/install_waagent.sh
 
 # Install AZNFS Mount Helper
 # $COMMON_DIR/install_aznfs.sh
