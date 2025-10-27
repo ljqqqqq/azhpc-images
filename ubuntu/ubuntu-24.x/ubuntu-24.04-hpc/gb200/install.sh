@@ -74,7 +74,7 @@ rm -Rf -- */
 # $COMMON_DIR/install_aznfs.sh
 
 # copy test file
-# $COMMON_DIR/copy_test_file.sh
+$COMMON_DIR/copy_test_file.sh
 
 # install monitor tools
 # $COMMON_DIR/install_monitoring_tools.sh
