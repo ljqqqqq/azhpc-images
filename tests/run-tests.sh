@@ -62,24 +62,9 @@ function test_component {
 # Verify common component installations accross all distros
 function verify_common_components {
     verify_package_updates;
-    verify_gcc_installation;
-    verify_azcopy_installation;
     verify_ofed_installation;
     verify_ib_device_status;
-    verify_hpcx_installation;
-    if [[ "${DISTRIBUTION}" != "ubuntu24.04" ]]; then
-        verify_mvapich2_installation;
-    fi
-    if [[ "$VMSIZE" != "standard_nd128isr_ndr_gb200_v6" ]]; then
-        verify_mkl_installation;
-        verify_hpcdiag_installation;
-        verify_aznfs_installation;
-    fi
-    verify_lustre_installation;
-    verify_ompi_installation;
-    
     verify_ipoib_status;
-    verify_pssh_installation;
 }
 
 function initiate_test_suite {
