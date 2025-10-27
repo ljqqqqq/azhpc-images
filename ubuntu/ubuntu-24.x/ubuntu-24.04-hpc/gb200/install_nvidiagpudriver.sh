@@ -11,16 +11,16 @@
 
 set -ex
 source ${COMMON_DIR}/utilities.sh
-# cuda_metadata=$(get_component_config "cuda")
-# CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
-# CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
-# CUDA_SAMPLES_VERSION=$(jq -r '.samples.version' <<< $cuda_metadata)
-# CUDA_SAMPLES_SHA256=$(jq -r '.samples.sha256' <<< $cuda_metadata)
+cuda_metadata=$(get_component_config "cuda")
+CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
+CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
+CUDA_SAMPLES_VERSION=$(jq -r '.samples.version' <<< $cuda_metadata)
+CUDA_SAMPLES_SHA256=$(jq -r '.samples.sha256' <<< $cuda_metadata)
 
-# wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/sbsa/cuda-keyring_1.1-1_all.deb
-# dpkg -i ./cuda-keyring_1.1-1_all.deb
+wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/sbsa/cuda-keyring_1.1-1_all.deb
+dpkg -i ./cuda-keyring_1.1-1_all.deb
 
-# apt-get update
+apt-get update
 # apt install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
 
 
@@ -95,7 +95,7 @@ $COMMON_DIR/write_component_version.sh "NVIDIA" $nvidia_driver_version
 # $UBUNTU_COMMON_DIR/install_gdrcopy.sh
 
 # Install NVIDIA IMEX
-apt-get install nvidia-imex-$NVIDIA_GPU_DRIVER_MAJOR_VERSION -y
+apt-get install nvidia-imex -y
 
 # Add configuration to /etc/modprobe.d/nvidia.conf
 cat <<EOF >> /etc/modprobe.d/nvidia.conf

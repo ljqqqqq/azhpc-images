@@ -296,7 +296,15 @@
                     "sha256": "2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015"
                 } 
             }
-        },        
+        }, 
+        "ubuntu24.04-aks": {
+            "aarch64":{
+                "driver": {
+                    "version": "13.0",
+                    "distribution": "ubuntu2404"
+                }
+            }
+        },                
         "almalinux8.7": {
             "x86_64":{
                 "driver": {
