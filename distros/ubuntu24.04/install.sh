@@ -17,12 +17,14 @@ if [[ "$#" -gt 0 ]]; then
     fi
 fi
 
-source ../../utils/set_properties.sh
+source ../../utils/set_properties.sh $SKU
 
 ./install_utils.sh
 
 # update cmake
-$COMPONENT_DIR/install_cmake.sh
+if [ "$SKU" != "GB200" ]; then
+    $COMPONENT_DIR/install_cmake.sh
+fi
 
 # install Lustre client
 $COMPONENT_DIR/install_lustre_client.sh
@@ -34,17 +36,28 @@ $COMPONENT_DIR/install_doca.sh
 $COMPONENT_DIR/install_pmix.sh
 
 # install mpi libraries
-$COMPONENT_DIR/install_mpis.sh
+$COMPONENT_DIR/install_mpis.sh $SKU
 
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
-    $COMPONENT_DIR/install_nvidiagpudriver.sh "$SKU"
+
+    if [ "$SKU" = "GB200" ]; then
+        # For GB200, pass SKU to install the correct driver
+        $COMPONENT_DIR/install_nvidiagpudriver_gb200.sh
+
+        ./install_nvloom_gb200.sh "$SKU"
+
+        $COMPONENT_DIR/install_nvbandwidth_tool.sh
+
+    else
+        $COMPONENT_DIR/install_nvidiagpudriver.sh "$SKU"
+    fi
     
     # Install NCCL
     $COMPONENT_DIR/install_nccl.sh
     
     # Install NVIDIA docker container
-    $COMPONENT_DIR/install_docker.sh
+    $COMPONENT_DIR/install_docker.sh "$SKU"
 
     # Install DCGM
     $COMPONENT_DIR/install_dcgm.sh
