@@ -1,10 +1,17 @@
 #!/bin/bash
 set -ex
 
+SKU=$1
+
 source ${UTILS_DIR}/utilities.sh
 
 # Install Moby Engine and CLI
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
+    if [ "$SKU" == "GB200" ]; then
+        # Pin runc version for GB200 to avoid error in dra driver
+        runc_version="1.1.15-ubuntu24.04u1"
+        apt-get install -y moby-runc=$runc_version
+    fi
     apt-get install -y moby-engine
     apt-get install -y moby-cli
 elif [[ $DISTRIBUTION == almalinux* ]]; then
@@ -15,7 +22,7 @@ elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     tdnf install -y moby-cli
 fi
 
-$COMPONENT_DIR/install_nvidia_container_toolkit.sh
+$COMPONENT_DIR/install_nvidia_container_toolkit.sh $SKU
 
 # enable and restart the docker daemon to complete the installation
 systemctl enable docker
