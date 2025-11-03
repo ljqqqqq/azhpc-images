@@ -13,7 +13,7 @@ curl -sSL -O https://packages.microsoft.com/config/$(. /etc/os-release;echo $ID/
 dpkg -i packages-microsoft-prod.deb
 apt-get update
 
-sed -i 's/^#precedence ::ffff:0:0\\/96  100/precedence ::ffff:0:0\\/96  100/' /etc/gai.conf
+sed -i 's|^#precedence ::ffff:0:0/96  100|precedence ::ffff:0:0/96  100|' /etc/gai.conf
 
 # Remove the downloaded package
 rm -rf packages-microsoft-prod.deb
