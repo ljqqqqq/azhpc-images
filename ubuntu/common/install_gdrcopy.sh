@@ -30,6 +30,10 @@ else
     dpkg -i gdrcopy-tests_${GDRCOPY_VERSION}_arm64.${GDRCOPY_DISTRIBUTION}+cuda${CUDA_DRIVER_VERSION}.deb
     dpkg -i gdrcopy_${GDRCOPY_VERSION}_arm64.${GDRCOPY_DISTRIBUTION}.deb
 fi
+apt-mark hold gdrdrv-dkms
+apt-mark hold libgdrapi
+apt-mark hold gdrcopy-tests
+apt-mark hold gdrcopy
 popd
 
 $COMMON_DIR/write_component_version.sh "GDRCOPY" ${GDRCOPY_VERSION}

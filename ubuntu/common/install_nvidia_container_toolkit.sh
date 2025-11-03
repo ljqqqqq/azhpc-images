@@ -19,6 +19,7 @@ sudo apt-get install -y nvidia-container-toolkit-base=$nvidia_toolkit_version
 sudo apt-get install -y nvidia-container-toolkit=$nvidia_toolkit_version
 
 apt-mark hold nvidia-container-toolkit
+apt-mark hold nvidia-container-toolkit-base
 apt-mark hold libnvidia-container-tools
 apt-mark hold libnvidia-container1
 

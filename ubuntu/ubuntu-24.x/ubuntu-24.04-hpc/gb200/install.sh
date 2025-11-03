@@ -118,7 +118,7 @@ $COMMON_DIR/copy_test_file.sh
 $UBUNTU_COMMON_DIR/disable_cloudinit.sh
 
 # diable auto kernel updates
-# $UBUNTU_COMMON_DIR/disable_auto_upgrade.sh
+$UBUNTU_COMMON_DIR/disable_auto_upgrade.sh
 
 # Disable Predictive Network interface renaming
 # $UBUNTU_COMMON_DIR/disable_predictive_interface_renaming.sh

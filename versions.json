@@ -418,8 +418,8 @@
     },
     "waagent": {
         "common": {
-            "version": "2.12.0.4",
-            "sha256": "88be3211a433e1d12d7212761a06b227e6bed551649abd62d4eebeae116ab26c"
+            "version": "2.13.1.1",
+            "sha256": "468fca55837f492bd442f31bbc5b909477a35efc60c8c64c7d121d60379b7ea3"
         },
         "azurelinux3.0": {
             "x86_64":{
