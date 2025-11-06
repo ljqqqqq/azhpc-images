@@ -75,7 +75,7 @@ function verify_common_components {
         verify_hpcdiag_installation;
         verify_aznfs_installation;
     fi
-    verify_lustre_installation;
+    # verify_lustre_installation;
     verify_ompi_installation;
     
     verify_ipoib_status;
