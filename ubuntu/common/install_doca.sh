@@ -3,15 +3,22 @@ set -ex
 
 source ${COMMON_DIR}/utilities.sh
 
+SKU=$1
+
 doca_metadata=$(get_component_config "doca")
 DOCA_VERSION=$(jq -r '.version' <<< $doca_metadata)
 DOCA_SHA256=$(jq -r '.sha256' <<< $doca_metadata)
 DOCA_URL=$(jq -r '.url' <<< $doca_metadata)
 DOCA_FILE=$(basename ${DOCA_URL})
 
-$COMMON_DIR/download_and_verify.sh $DOCA_URL $DOCA_SHA256
+if [[ "$SKU" == "GB200" ]]; then
+    dpkg -i $TOP_DIR/internal_bits/doca_host_${DOCA_VERSION}_arm64.deb
+else
+    $COMMON_DIR/download_and_verify.sh $DOCA_URL $DOCA_SHA256
+    dpkg -i $DOCA_FILE
+fi
 
-dpkg -i $DOCA_FILE
+
 apt-get update
 
 if [[ "$ARCH" == "aarch64" ]]; then
