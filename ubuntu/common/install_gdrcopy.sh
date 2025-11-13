@@ -18,6 +18,11 @@ git clone https://github.com/NVIDIA/gdrcopy.git
 pushd gdrcopy/packages/
 git checkout ${GDRCOPY_COMMIT}
 
+if [[ "$SKU" == "GB200" ]]; then
+    sudo sed -i "/for compute in \$COMPUTE_LIST;/i COMPUTE_LIST=\"100 120\"" ../scripts/get_cuda_gencode.sh
+    sudo sed -i "/for compute in \$COMPUTE_LIST;/i SM_LIST=\"100 120\"" ../scripts/get_cuda_gencode.sh
+fi
+
 CUDA=/usr/local/cuda ./build-deb-packages.sh
 if [ "$ARCH" == "x86_64" ]; then
     dpkg -i gdrdrv-dkms_${GDRCOPY_VERSION}_amd64.${GDRCOPY_DISTRIBUTION}.deb
