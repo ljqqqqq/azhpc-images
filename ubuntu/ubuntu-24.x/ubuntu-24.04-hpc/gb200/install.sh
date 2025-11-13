@@ -58,17 +58,6 @@ rm -rf /var/intel/ /var/cache/*
 rm -Rf -- */
 
 
-
-
-# install diagnostic script
-# $COMMON_DIR/install_hpcdiag.sh
-
-# install persistent rdma naming
-# $COMMON_DIR/install_azure_persistent_rdma_naming.sh
-
-# optimizations
-# $UBUNTU_COMMON_DIR/hpc-tuning.sh "$SKU"
-
 $UBUNTU_COMMON_DIR/install_waagent.sh
 
 # Install AZNFS Mount Helper
@@ -76,24 +65,6 @@ $UBUNTU_COMMON_DIR/install_waagent.sh
 
 # copy test file
 $COMMON_DIR/copy_test_file.sh
-
-# install monitor tools
-# $COMMON_DIR/install_monitoring_tools.sh
-
-# install AMD libs
-# $COMMON_DIR/install_amd_libs.sh
-
-# install Azure/NHC Health Checks
-# $COMMON_DIR/install_health_checks.sh
-
-#disable cloud-init
-# $UBUNTU_COMMON_DIR/disable_cloudinit.sh
-
-# diable auto kernel updates
-# $UBUNTU_COMMON_DIR/disable_auto_upgrade.sh
-
-# Disable Predictive Network interface renaming
-# $UBUNTU_COMMON_DIR/disable_predictive_interface_renaming.sh
 
 # SKU Customization
 $COMMON_DIR/setup_sku_customizations.sh
