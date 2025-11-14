@@ -38,6 +38,11 @@
                 "version": "3.1.0-091513-25.07-ubuntu2404"
             }
         },
+        "ubuntu24.04-aks": {
+            "aarch64": {
+                "version": "3.1.0-091513-25.07-ubuntu2404"
+            }
+        },
         "almalinux8.7": {
             "x86_64": {
                 "version": "2.8.0",
@@ -190,6 +195,14 @@
                 }
             }
         },
+        "ubuntu24.04-aks": {
+            "aarch64": {
+                "driver": {
+                    "version": "580.105.08",
+                    "major_version": "580"
+                }
+            }
+        },
         "almalinux8.7": {
             "x86_64":{
                 "driver": {
@@ -279,7 +292,15 @@
                     "sha256": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79"
                 } 
             }
-        },        
+        }, 
+        "ubuntu24.04-aks": {
+            "aarch64":{
+                "driver": {
+                    "version": "13.0",
+                    "distribution": "ubuntu2404"
+                }
+            }
+        },                
         "almalinux8.7": {
             "x86_64":{
                 "driver": {
@@ -351,6 +372,13 @@
                 "distribution": "Ubuntu24_04"
             }
         },
+        "ubuntu24.04-aks": {
+            "aarch64":{
+                "version": "2.5-1",
+                "commit": "bda1f60346ffd564b12245662758286a6a5d18d6",
+                "distribution": "Ubuntu24_04"
+            }
+        },        
         "almalinux8.7": {
             "x86_64":{
                 "version": "2.5-1",

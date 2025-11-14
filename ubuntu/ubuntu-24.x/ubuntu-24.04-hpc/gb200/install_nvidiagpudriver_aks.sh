@@ -1,0 +1,92 @@
+#!/bin/bash
+############################################################################
+# @Brief   : Installs NVIDIA GPU driver and CUDA toolkit on Ubuntu 24.04.
+# @Details : This script installs the NVIDIA GPU driver and CUDA toolkit on
+#            Ubuntu 24.04 using the package manager. It also configures the
+#            NVIDIA persistence daemon and IMEX service.
+# @Usage   : Run this script in the VM to install the NVIDIA GPU driver and
+#            CUDA toolkit.
+# @Args    : None
+############################################################################
+
+set -ex
+source ${COMMON_DIR}/utilities.sh
+cuda_metadata=$(get_component_config "cuda")
+CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
+CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
+CUDA_SAMPLES_VERSION=$(jq -r '.samples.version' <<< $cuda_metadata)
+CUDA_SAMPLES_SHA256=$(jq -r '.samples.sha256' <<< $cuda_metadata)
+
+wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/sbsa/cuda-keyring_1.1-1_all.deb
+dpkg -i ./cuda-keyring_1.1-1_all.deb
+
+apt-get update
+
+
+# Install NVIDIA GPU driver
+nvidia_gpu_driver_metadata=$(get_component_config "nvidia")
+NVIDIA_GPU_DRIVER_MAJOR_VERSION=$(jq -r '.driver.major_version' <<< $nvidia_gpu_driver_metadata)
+NVIDIA_GPU_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_gpu_driver_metadata)
+
+# Install the NVIDIA driver and related packages
+apt install nvidia-dkms-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-driver-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-modprobe -y
+
+# remove unused configuration file if the file was created by the NVIDIA driver
+rm /etc/modprobe.d/nvidia-graphics-drivers-kms.conf
+
+# Apply nvprofiling settings
+echo 'options nvidia NVreg_RestrictProfilingToAdminUsers=0' | tee /etc/modprobe.d/nvprofiling.conf
+
+# Configuring nvidia persistenced daemon
+if [ ! -f /etc/systemd/system/nvidia-persistenced.service ]; then
+    cat <<EOF > /etc/systemd/system/nvidia-persistenced.service
+[Unit]
+Description=NVIDIA Persistence Daemon
+Wants=syslog.target
+ 
+[Service]
+Type=forking
+PIDFile=/var/run/nvidia-persistenced/nvidia-persistenced.pid
+Restart=always
+ExecStart=/usr/bin/nvidia-persistenced --verbose --persistence-mode
+ExecStopPost=/bin/rm -rf /var/run/nvidia-persistenced
+ 
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable nvidia-persistenced.service
+fi
+
+systemctl restart nvidia-persistenced.service
+systemctl status nvidia-persistenced.service
+if ! systemctl is-active --quiet nvidia-persistenced.service; then
+    echo "nvidia-persistenced service is not running. Exiting."
+    exit 1
+fi
+
+# Verify the installation
+nvidia-smi
+
+# Write the driver versions to the component versions file
+nvidia_driver_version=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n 1)
+$COMMON_DIR/write_component_version.sh "NVIDIA" $nvidia_driver_version
+
+./install_gdrcopy_aks.sh
+
+# Install NVIDIA IMEX
+apt-get install nvidia-imex -y
+
+# Add configuration to /etc/modprobe.d/nvidia.conf
+cat <<EOF >> /etc/modprobe.d/nvidia.conf
+options nvidia NVreg_CreateImexChannel0=1
+EOF
+
+sudo update-initramfs -u -k all
+
+# Configuring nvidia-imex service
+systemctl enable nvidia-imex.service
+
+nvidia_imex_version=$(nvidia-imex --version | grep -oP 'IMEX version is: \K[0-9.]+')
+$COMMON_DIR/write_component_version.sh "IMEX" $nvidia_imex_version
