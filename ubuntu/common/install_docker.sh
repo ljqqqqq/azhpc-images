@@ -2,8 +2,6 @@
 set -ex
 
 # Install Moby Engine and CLI
-runc_version="1.1.15-ubuntu24.04u1"
-apt-get install moby-runc=$runc_version
 apt-get install -y moby-engine
 apt-get install -y moby-cli
 
