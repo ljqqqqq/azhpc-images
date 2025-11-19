@@ -28,7 +28,9 @@ apt install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
 echo 'export CUDA_HOME=/usr/local/cuda' | tee -a /etc/profile
 echo 'export PATH=$CUDA_HOME/bin:$PATH' | tee -a /etc/profile
 echo 'export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH' | tee -a /etc/profile
-$COMMON_DIR/write_component_version.sh "CUDA" ${CUDA_DRIVER_VERSION}
+cuda_version=$(source /etc/profile; nvcc --version | grep release | awk '{print $6}' | cut -c2-)
+$COMMON_DIR/write_component_version.sh "CUDA" $cuda_version
+
 
 # Download CUDA samples
 TARBALL="v${CUDA_SAMPLES_VERSION}.tar.gz"
