@@ -104,6 +104,8 @@ cat <<EOF >> /etc/modprobe.d/nvidia.conf
 options nvidia NVreg_CreateImexChannel0=1
 EOF
 
+grep -q 'RMBug5172204War=4' /etc/modprobe.d/nvidia.conf 2>/dev/null || echo 'options nvidia NVreg_RegistryDwords="RMBug5172204War=4"' | tee -a /etc/modprobe.d/nvidia.conf
+
 sudo update-initramfs -u -k all
 
 # Configuring nvidia-imex service
