@@ -310,6 +310,12 @@ function verify_dcgm_installation {
     # Check if the NVIDIA DCGM service is active
     systemctl is-active --quiet nvidia-dcgm
     check_exit_code "NVIDIA DCGM service is active" "NVIDIA DCGM service is inactive/dead!"
+
+    # Run DCGMI diagnostics
+    # See https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/dcgm-diagnostics.html#exit-codes
+    dcgmi diag -r 1
+    check_exit_code "DCGMI check passed" "DCGMI diagnostics failed!"
+
 }
 
 function verify_sku_customization_service {
