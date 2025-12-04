@@ -114,6 +114,10 @@ function verify_cuda_installation {
     lsmod | grep nvidia_peermem
     check_exit_code "NVIDIA Peer memory module is inserted" "NVIDIA Peer memory module is not inserted!"
 
+    # Verify if NVIDIA driver CDMM mode is enabled
+    cat /proc/driver/nvidia/params | grep -q  "CoherentGPUMemoryMode: \"driver\""
+    check_exit_code "NVIDIA CDMM mode is enabled" "NVIDIA CDMM mode is not enabled!"
+
     # Verify if CUDA is installed
     # re-enable this after testing
     # nvcc --version
