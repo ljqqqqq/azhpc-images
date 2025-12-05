@@ -48,6 +48,7 @@ popd
 nvidia_gpu_driver_metadata=$(get_component_config "nvidia")
 NVIDIA_GPU_DRIVER_MAJOR_VERSION=$(jq -r '.driver.major_version' <<< $nvidia_gpu_driver_metadata)
 NVIDIA_GPU_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_gpu_driver_metadata)
+NVIDIA_IMEX_VERSION=$(jq -r '.imex.version' <<< $nvidia_gpu_driver_metadata)
 
 # Install the NVIDIA driver and related packages
 apt install nvidia-dkms-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-driver-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-modprobe -y
@@ -102,7 +103,7 @@ $COMMON_DIR/write_component_version.sh "NVIDIA" $nvidia_driver_version
 $UBUNTU_COMMON_DIR/install_gdrcopy.sh
 
 # Install NVIDIA IMEX
-apt-get install nvidia-imex -y
+apt-get install nvidia-imex=${NVIDIA_IMEX_VERSION} -y
 
 # Add configuration to /etc/modprobe.d/nvidia.conf
 cat <<EOF >> /etc/modprobe.d/nvidia.conf
