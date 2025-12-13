@@ -32,7 +32,7 @@ containerd config default | sudo tee /etc/containerd/config.toml
 sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
 nvidia-ctk runtime configure --runtime=containerd --set-as-default
 sed -i 's/enable_cdi = false/enable_cdi = true/g' /etc/containerd/config.toml
-sed -i 's/enable_cdi = false/enable_cdi = true/g' /etc/containerd/config.d/*.toml
+sed -i 's/enable_cdi = false/enable_cdi = true/g' /etc/containerd/conf.d/*.toml
 sudo systemctl restart containerd
 # sed -i 's/disabled_plugins = \[\]/disabled_plugins = \["cri", "zfs", "aufs", "btrfs", "devmapper"\]/g' /etc/containerd/config.toml
 
