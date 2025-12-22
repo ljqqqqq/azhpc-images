@@ -42,7 +42,42 @@ else
     modprobe nvidia-peermem
     # verify if loaded
     lsmod | grep nvidia_peermem
-fi
+
+    IFS='.' read -r major minor patch <<< "$NVIDIA_DRIVER_VERSION"
+
+    if [[ $major -gt 570 ]] || [[ $major -eq 570 && $minor -ge 172 ]]; then
+        echo "Configuring nvidia persistenced daemon"
+        if [ ! -f /etc/systemd/system/nvidia-persistenced.service ]; then
+        cat <<EOF > /etc/systemd/system/nvidia-persistenced.service
+[Unit]
+Description=NVIDIA Persistence Daemon
+Wants=syslog.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/nvidia-persistenced/nvidia-persistenced.pid
+Restart=always
+ExecStart=/usr/bin/nvidia-persistenced --verbose --persistence-mode
+ExecStopPost=/bin/rm -rf /var/run/nvidia-persistenced
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload
+        systemctl enable nvidia-persistenced.service
+        fi
+        systemctl restart nvidia-persistenced.service
+        systemctl status nvidia-persistenced.service
+        if ! systemctl is-active --quiet nvidia-persistenced.service; then
+            echo "nvidia-persistenced service is not running. Exiting."
+            exit 1
+        fi
+    else
+        # Driver version less than 570.172.08 has a bug which causes OOM issues with persistenced daemon enabled
+        # See https://forums.developer.nvidia.com/t/nvidia-smi-uses-all-of-ram-and-swap/295639/29, https://docs.nvidia.com/datacenter/tesla/tesla-release-notes-570-172-08/index.html#fixed-issues
+        echo "Not enabling nvidia persistenced daemon as the driver version is less than 570.172.08"
+    fi
+fi    
 write_component_version "NVIDIA" ${NVIDIA_DRIVER_VERSION}
 
 touch /etc/modules-load.d/nvidia-peermem.conf
