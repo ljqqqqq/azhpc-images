@@ -230,7 +230,13 @@ function verify_rccl_installation {
 function verify_package_updates {
     # TODO: wait for pre-depends bug to be fixed in apt
     case ${ID} in
-        ubuntu) ! sudo apt list "?and(?upgradable, ?not(?phasing), ?not(?depends(?phasing)))" 2>/dev/null | grep -q .;;
+        ubuntu) 
+            if [[ "$VMSIZE" == "standard_nd128isr_ndr_gb200_v6" || "$VMSIZE" == "standard_nd128isr_gb300_v6" ]]; then
+                # doca-related packages are not latest version which includes stale packages, so just list packages here for reference
+                sudo apt list "?and(?upgradable, ?not(?phasing), ?not(?depends(?phasing)))"
+            else
+                ! sudo apt list "?and(?upgradable, ?not(?phasing), ?not(?depends(?phasing)))" 2>/dev/null | grep -q .;;
+            fi    
         almalinux)
             sudo dnf -y makecache 
             sudo dnf check-update -y --refresh;;
