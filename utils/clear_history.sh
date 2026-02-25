@@ -107,10 +107,11 @@ fi
 
 # Clear History
 # Stop syslog service
-systemctl stop systemd-journald-dev-log.socket
-systemctl stop systemd-journald.socket
-systemctl stop systemd-journald.service
-systemctl stop syslog.socket rsyslog systemd-journald
+systemctl stop systemd-journald-dev-log.socket || true
+systemctl stop systemd-journald-audit.socket || true
+systemctl stop systemd-journald.socket || true
+systemctl stop systemd-journald.service || true
+systemctl stop syslog.socket rsyslog 
 #systemctl stop auditd 2>/dev/null
 # Delete Defender related files
 rm -rf /var/log/microsoft/mdatp /etc/opt/microsoft/mdatp /var/lib/waagent/Microsoft.Azure.AzureDefenderForServers.MDE.Linux* /var/log/azure/Microsoft.Azure.AzureDefenderForServers.MDE.Linux* /var/lib/GuestConfig/extension_logs/Microsoft.Azure.AzureDefenderForServers.MDE.Linux*
