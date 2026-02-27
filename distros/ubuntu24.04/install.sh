@@ -26,7 +26,7 @@ if [ "$SKU" != "GB200" ]; then
     $COMPONENT_DIR/install_cmake.sh
 
     # install Lustre client
-    $COMPONENT_DIR/install_lustre_client.sh
+    # $COMPONENT_DIR/install_lustre_client.sh
 fi
 
 # install DOCA OFED
