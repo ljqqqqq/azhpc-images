@@ -16,7 +16,7 @@ apt install -y cmake
 
 # Clone the repository and checkout the v1.2.0 tag
 NVLOOM_DOWNLOAD_URL="https://github.com/NVIDIA/nvloom.git"
-NVLOOM_VERSION="1.2.0"
+NVLOOM_VERSION="1.4.0"
 git clone $NVLOOM_DOWNLOAD_URL --branch v$NVLOOM_VERSION
 pushd nvloom
 cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_CUDA_ARCHITECTURES="100" .

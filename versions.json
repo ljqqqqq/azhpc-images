@@ -205,9 +205,9 @@
     },
     "ompi": {
         "common": {
-            "version": "5.0.8",
-            "sha256": "f891ddf2dab3b604f2521d0569615bc1c07a1ac86a295ac543e059aecb303621",
-            "url": "https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.8.tar.gz"
+            "version": "5.0.9",
+            "sha256": "be35ac3aae68609dedf56a3c6480cb1b0af9ae40b98cc83ef27bc859084a9aa8",
+            "url": "https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.9.tar.gz"
         }
     },
     "impi": {
