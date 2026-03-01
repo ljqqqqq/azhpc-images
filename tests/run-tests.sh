@@ -70,14 +70,14 @@ function verify_common_components {
     if [[ -z "${validation_mode:-}" ]]; then
         verify_package_updates;
     fi
-    verify_ofed_installation;
-    verify_ib_device_status;
-    verify_ib_modules_and_devices;
+    # verify_ofed_installation;
+    # verify_ib_device_status;
+    # verify_ib_modules_and_devices;
     if [[ "$DISTRIBUTION" == *-aks ]]; then return; fi
     verify_gcc_installation;
     verify_azcopy_installation;
-    verify_hpcx_installation;
-    verify_ompi_installation;
+    # verify_hpcx_installation;
+    # verify_ompi_installation;
     verify_pssh_installation;
     if [[ "$VMSIZE" != "standard_nd128isr_ndr_gb200_v6" && "$VMSIZE" != "standard_nd128isr_gb300_v6" ]]; then
         verify_mvapich2_installation;

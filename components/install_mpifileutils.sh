@@ -41,7 +41,7 @@ tar -xzf "${TARBALL}"
 
 # Load HPC-X MPI for building
 source /etc/profile.d/modules.sh
-module load mpi/hpcx
+module load mpi/openmpi
 
 # Build with CMake
 cd "${BUILD_DIR}"
@@ -56,7 +56,7 @@ cmake "${SRC_DIR}/mpifileutils-v${MPIFILEUTILS_VERSION}" \
 make -j$(nproc)
 make install
 
-module unload mpi/hpcx
+module unload mpi/openmpi
 
 # Cleanup build artifacts
 rm -rf "${BUILD_DIR}" "${SRC_DIR}"

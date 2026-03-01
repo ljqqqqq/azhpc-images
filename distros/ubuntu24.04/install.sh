@@ -36,7 +36,7 @@ else
 fi
 
 # install DOCA OFED
-$COMPONENT_DIR/install_doca.sh
+# $COMPONENT_DIR/install_doca.sh
 
 # install PMIX
 $COMPONENT_DIR/install_pmix.sh
@@ -108,7 +108,7 @@ rm -Rf -- */
 $COMPONENT_DIR/hpc-tuning.sh
 
 # install persistent rdma naming
-$COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
+# $COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
 
 if [[ "$SKU" != "GB200" ]]; then
 

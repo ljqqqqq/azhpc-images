@@ -8,7 +8,7 @@ dest_dir=/opt/nvidia/nvloom
 mkdir -p $dest_dir
 
 source /etc/profile.d/modules.sh
-module load mpi/hpcx
+module load mpi/openmpi
 
 nvloom_metadata=$(get_component_config "nvloom")
 NVLOOM_VERSION=$(jq -r '.version' <<< $nvloom_metadata)
@@ -42,7 +42,7 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
 fi
 
 
-module unload mpi/hpcx
+module unload mpi/openmpi
 
 rm -rf ./nvloom
  
