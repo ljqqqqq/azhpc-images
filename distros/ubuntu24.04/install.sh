@@ -137,7 +137,7 @@ $COMPONENT_DIR/copy_test_file.sh
 $COMPONENT_DIR/disable_cloudinit.sh
 
 # SKU Customization
-$COMPONENT_DIR/setup_sku_customizations.sh
+# $COMPONENT_DIR/setup_sku_customizations.sh
 
 # scan vulnerabilities using Trivy
 $COMPONENT_DIR/trivy_scan.sh
