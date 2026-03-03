@@ -110,7 +110,7 @@ rm -Rf -- */
 $COMPONENT_DIR/hpc-tuning.sh
 
 # install persistent rdma naming
-$COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
+# $COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
 
 if [[ "$SKU" != "GB200" ]]; then
 
@@ -140,6 +140,7 @@ $COMPONENT_DIR/disable_cloudinit.sh
 # $COMPONENT_DIR/setup_sku_customizations.sh
 
 # scan vulnerabilities using Trivy
+sleep 30
 $COMPONENT_DIR/trivy_scan.sh
 
 # diable auto kernel updates
