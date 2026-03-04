@@ -33,9 +33,9 @@
                 "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.2.1/host/doca-host_3.2.1-044000-25.10-ubuntu2404_amd64.deb"
             },
             "aarch64": {
-                "version": "3.2.1",
-                "sha256": "748ddd8a7445f5821423a10f9c26e6d17625286676d2e2a88bea56b0b2a6e3d4",
-                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.2.1/host/doca-host_3.2.1-044000-25.10-ubuntu2404_arm64.deb"
+                "version": "3.3.0",
+                "sha256": "ef4a16860fe1bf765f50605b331b5f4db35144b6d9dc914535261e1f68882636",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.3.0/host/doca-host_3.3.0-088000-26.01-ubuntu2404_arm64.deb"
             }
         },
         "ubuntu24.04-aks": {
@@ -101,9 +101,9 @@
         },
         "ubuntu24.04": {
             "aarch64": {
-                "version": "2.25.1",
-                "sha256": "cfc6816a4ac7932cf65e3f17a47106845728652cfd4d5ad71b0cb9b3ce2a9e48",
-                "url": "https://content.mellanox.com/hpc/hpc-x/v2.25.1_cuda13/hpcx-v2.25.1-gcc-doca_ofed-ubuntu24.04-cuda13-aarch64.tbz"
+                "version": "2.26",
+                "sha256": "55511b500a19e64828587ccf340c3fa7f3f806e4f8c4afd06e689cf77f17ae54",
+                "url": "https://content.mellanox.com/hpc/hpc-x/v2.26_cuda13/hpcx-v2.26-gcc-doca_ofed-ubuntu24.04-cuda13-aarch64.tbz"
             },
             "x86_64": {
                 "nvidia_v100": {
