@@ -138,6 +138,7 @@ $COMPONENT_DIR/disable_cloudinit.sh
 # $COMPONENT_DIR/setup_sku_customizations.sh
 
 # scan vulnerabilities using Trivy
+sleep 30
 $COMPONENT_DIR/trivy_scan.sh
 
 # diable auto kernel updates
