@@ -105,7 +105,7 @@ rm -Rf -- */
 $COMPONENT_DIR/hpc-tuning.sh
 
 # install persistent rdma naming
-$COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
+# $COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
 
 if [[ "$SKU" != "GB200" ]]; then
 

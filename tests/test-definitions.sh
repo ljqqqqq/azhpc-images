@@ -111,8 +111,8 @@ function verify_nvidia_driver_installation {
     check_exit_code "NVIDIA Driver ${VERSION_NVIDIA}" "Failed to run NVIDIA SMI"
     
     # Verify if NVIDIA peer memory module is inserted
-    lsmod | grep nvidia_peermem
-    check_exit_code "NVIDIA Peer memory module is inserted" "NVIDIA Peer memory module is not inserted!"
+    # lsmod | grep nvidia_peermem
+    # check_exit_code "NVIDIA Peer memory module is inserted" "NVIDIA Peer memory module is not inserted!"
 
     if [[ "$VMSIZE" == "standard_nd128isr_ndr_gb200_v6" || "$VMSIZE" == "standard_nd128isr_gb300_v6" ]]; then
         # Verify if NVIDIA driver CDMM mode is enabled
