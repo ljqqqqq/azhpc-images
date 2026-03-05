@@ -43,6 +43,12 @@ else
     PMIX_PATH=${INSTALL_PREFIX}/pmix/${PMIX_VERSION:0:-2}
     ${HPCX_PATH}/utils/hpcx_rebuild.sh --with-hcoll --ompi-extra-config "--with-pmix=${PMIX_PATH} --enable-orterun-prefix-by-default"
 fi
+
+# Create symlink hpcx-rebuild4 -> hpcx-rebuild (similar to ompi -> ompi4)
+if [ -d "${HPCX_PATH}/hpcx-rebuild" ] && [ ! -e "${HPCX_PATH}/hpcx-rebuild4" ]; then
+    ln -s hpcx-rebuild ${HPCX_PATH}/hpcx-rebuild4
+fi
+
 cp -r ${HPCX_PATH}/ompi/tests ${HPCX_PATH}/hpcx-rebuild
 
 if [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
