@@ -46,3 +46,4 @@ setenv          MPI_HOME        /usr/lib/aarch64-linux-gnu/openmpi
 EOF
 
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/openmpi
+write_component_version "OMPI" ${OMPI_VERSION}

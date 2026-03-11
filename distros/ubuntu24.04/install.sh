@@ -39,7 +39,7 @@ $COMPONENT_DIR/install_rdma_core_mpi.sh
 $COMPONENT_DIR/install_pmix.sh
 
 # install mpi libraries
-# $COMPONENT_DIR/install_mpis.sh
+$COMPONENT_DIR/install_mpis.sh
 
 # install mpifileutils
 $COMPONENT_DIR/install_mpifileutils.sh
