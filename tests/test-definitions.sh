@@ -189,7 +189,7 @@ function verify_nccl_installation {
             --map-by ppr:4:node \
             -x LD_LIBRARY_PATH=/usr/local/nccl-rdma-sharp-plugins/lib:$LD_LIBRARY_PATH \
             -mca coll_hcoll_enable 0 \
-            -x UCX_TLS=rc \
+            -x UCX_TLS=tcp \
             -x UCX_IB_GID_INDEX=0 \
             -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
             -x NCCL_SOCKET_IFNAME=eth0 \

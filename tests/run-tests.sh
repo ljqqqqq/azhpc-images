@@ -77,7 +77,7 @@ function verify_common_components {
     verify_gcc_installation;
     verify_azcopy_installation;
     verify_hpcx_installation;
-    # verify_ompi_installation;
+    verify_ompi_installation;
     verify_pssh_installation;
     if [[ "$VMSIZE" != "standard_nd128isr_ndr_gb200_v6" && "$VMSIZE" != "standard_nd128isr_gb300_v6" ]]; then
         verify_mvapich2_installation;

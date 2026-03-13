@@ -71,26 +71,26 @@ if ! [[ ("${DISTRIBUTION}" == "ubuntu24.04" || "${DISTRIBUTION}" == "azurelinux3
 fi
 
 # Install Open MPI
-# ompi_metadata=$(get_component_config "ompi")
-# OMPI_VERSION=$(jq -r '.version' <<< $ompi_metadata)
-# OMPI_SHA256=$(jq -r '.sha256' <<< $ompi_metadata)
-# OMPI_DOWNLOAD_URL=$(jq -r '.url' <<< $ompi_metadata)
-# TARBALL=$(basename $OMPI_DOWNLOAD_URL)
-# OMPI_FOLDER=$(basename $OMPI_DOWNLOAD_URL .tar.gz)
+ompi_metadata=$(get_component_config "ompi")
+OMPI_VERSION=$(jq -r '.version' <<< $ompi_metadata)
+OMPI_SHA256=$(jq -r '.sha256' <<< $ompi_metadata)
+OMPI_DOWNLOAD_URL=$(jq -r '.url' <<< $ompi_metadata)
+TARBALL=$(basename $OMPI_DOWNLOAD_URL)
+OMPI_FOLDER=$(basename $OMPI_DOWNLOAD_URL .tar.gz)
 
-# download_and_verify $OMPI_DOWNLOAD_URL $OMPI_SHA256
-# tar -xvf $TARBALL
-# cd $OMPI_FOLDER
-# ./configure LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${HCOLL_PATH}/lib --prefix=${INSTALL_PREFIX}/openmpi-${OMPI_VERSION} --with-ucx=${UCX_PATH} --with-hcoll=${HCOLL_PATH} --with-pmix=${PMIX_PATH} --enable-mpirun-prefix-by-default --with-platform=contrib/platform/mellanox/optimized
-# make -j$(nproc) 
-# make install
-# cd ..
-# write_component_version "OMPI" ${OMPI_VERSION}
+download_and_verify $OMPI_DOWNLOAD_URL $OMPI_SHA256
+tar -xvf $TARBALL
+cd $OMPI_FOLDER
+./configure LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${HCOLL_PATH}/lib --prefix=${INSTALL_PREFIX}/openmpi-${OMPI_VERSION} --with-ucx=${UCX_PATH} --with-hcoll=${HCOLL_PATH} --with-pmix=${PMIX_PATH} --enable-mpirun-prefix-by-default --with-platform=contrib/platform/mellanox/optimized
+make -j$(nproc) 
+make install
+cd ..
+write_component_version "OMPI" ${OMPI_VERSION}
 
-# if [[ $DISTRIBUTION == almalinux* ]]  || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-#     # exclude openmpi, perftest from updates
-#     sed -i "$ s/$/ openmpi perftest/" /etc/dnf/dnf.conf
-# fi
+if [[ $DISTRIBUTION == almalinux* ]]  || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
+    # exclude openmpi, perftest from updates
+    sed -i "$ s/$/ openmpi perftest/" /etc/dnf/dnf.conf
+fi
 
 if [[ "$ARCHITECTURE" != "aarch64" ]]; then
     # Install Intel MPI
@@ -153,21 +153,21 @@ EOF
 fi    
 
 # OpenMPI
-# cat << EOF >> ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION}
-# #%Module 1.0
-# #
-# #  OpenMPI ${OMPI_VERSION}
-# #
-# conflict        mpi
-# prepend-path    PATH            /opt/openmpi-${OMPI_VERSION}/bin
-# prepend-path    LD_LIBRARY_PATH /opt/openmpi-${OMPI_VERSION}/lib:${HCOLL_PATH}/lib
-# prepend-path    MANPATH         /opt/openmpi-${OMPI_VERSION}/share/man
-# setenv          MPI_BIN         /opt/openmpi-${OMPI_VERSION}/bin
-# setenv          MPI_INCLUDE     /opt/openmpi-${OMPI_VERSION}/include
-# setenv          MPI_LIB         /opt/openmpi-${OMPI_VERSION}/lib
-# setenv          MPI_MAN         /opt/openmpi-${OMPI_VERSION}/share/man
-# setenv          MPI_HOME        /opt/openmpi-${OMPI_VERSION}
-# EOF
+cat << EOF >> ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION}
+#%Module 1.0
+#
+#  OpenMPI ${OMPI_VERSION}
+#
+conflict        mpi
+prepend-path    PATH            /opt/openmpi-${OMPI_VERSION}/bin
+prepend-path    LD_LIBRARY_PATH /opt/openmpi-${OMPI_VERSION}/lib:${HCOLL_PATH}/lib
+prepend-path    MANPATH         /opt/openmpi-${OMPI_VERSION}/share/man
+setenv          MPI_BIN         /opt/openmpi-${OMPI_VERSION}/bin
+setenv          MPI_INCLUDE     /opt/openmpi-${OMPI_VERSION}/include
+setenv          MPI_LIB         /opt/openmpi-${OMPI_VERSION}/lib
+setenv          MPI_MAN         /opt/openmpi-${OMPI_VERSION}/share/man
+setenv          MPI_HOME        /opt/openmpi-${OMPI_VERSION}
+EOF
 
 #IntelMPI-v2021
 if [[ "$ARCHITECTURE" != "aarch64" ]]; then
@@ -200,7 +200,7 @@ fi
 # Create symlinks for modulefiles
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-${HPCX_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/hpcx
 ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix-${HPCX_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix
-# ln -s ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/openmpi
+ln -s ${MPI_MODULE_FILES_DIRECTORY}/openmpi-${OMPI_VERSION} ${MPI_MODULE_FILES_DIRECTORY}/openmpi
 # cleanup downloaded tarballs and other installation files/folders
 rm -rf *.tbz *.tar.gz *offline.sh
 rm -rf -- */
