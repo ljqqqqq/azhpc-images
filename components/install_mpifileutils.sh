@@ -41,7 +41,7 @@ tar -xzf "${TARBALL}"
 
 # Load HPC-X MPI for building
 source /etc/profile.d/modules.sh
-module load mpi/openmpi
+module load mpi/hpcx
 
 # Build with CMake
 cd "${BUILD_DIR}"

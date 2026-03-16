@@ -9,8 +9,7 @@ set GCC=/usr/bin/gcc
 
 INSTALL_PREFIX=/opt
 
-apt-get -y install rdma-core
-
+apt-get install -y rdma-core libibverbs-dev librdmacm-dev
 # apt-get -y install openmpi-bin \
 #             libopenmpi-dev \
 #             openmpi-common \
@@ -21,7 +20,7 @@ apt-get -y install rdma-core
 #                    libfabric1 \
 #                    libfabric-bin
 
-# apt-get -y install ibverbs-utils
+apt-get -y install ibverbs-utils
 
 # # Setup module files for MPIs
 # MPI_MODULE_FILES_DIRECTORY=${MODULE_FILES_DIRECTORY}/mpi

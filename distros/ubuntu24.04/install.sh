@@ -33,7 +33,7 @@ $COMPONENT_DIR/install_lustre_client.sh
 # install DOCA OFED
 # $COMPONENT_DIR/install_doca.sh
 
-$COMPONENT_DIR/install_rdma_core_mpi.sh
+$COMPONENT_DIR/install_rdma_core.sh
 
 # install PMIX
 $COMPONENT_DIR/install_pmix.sh

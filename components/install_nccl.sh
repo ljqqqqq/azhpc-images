@@ -83,13 +83,13 @@ popd
 
 # Build the nccl tests
 source /etc/profile.d/modules.sh
-module load mpi/openmpi
+module load mpi/hpcx
 git clone https://github.com/NVIDIA/nccl-tests.git
 pushd nccl-tests
 make MPI=1 MPI_HOME=${MPI_HOME} CUDA_HOME=/usr/local/cuda
 popd
 mv nccl-tests /opt/.
-module unload mpi/openmpi
+module unload mpi/hpcx
 popd
 
 write_component_version "NCCL" ${NCCL_VERSION}
