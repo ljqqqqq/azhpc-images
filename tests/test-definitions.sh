@@ -414,7 +414,7 @@ function verify_nvloom_setup {
     # Verify nvloom setup
     module load mpi/hpcx
     gpu_num=$(nvidia-smi -L | wc -l) 
-    mpirun -np $gpu_num /opt/nvidia/nvloom/nvloom_cli -s gpu-to-rack
+    mpirun -np $gpu_num -x UCX_TLS=tcp /opt/nvidia/nvloom/nvloom_cli -s gpu-to-rack
     check_exit_code "NV Loom Installed!" "Issue with NV Loom installation!"
     module unload mpi/hpcx
 }
