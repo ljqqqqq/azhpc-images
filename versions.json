@@ -298,7 +298,7 @@
             },
             "aarch64": {
                 "driver": {
-                    "version": "580.105.08",
+                    "version": "580.126.20",
                     "major_version": "580"
                 }
             }
