@@ -7,6 +7,7 @@ source ${UTILS_DIR}/utilities.sh
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     apt-get install -y moby-engine
     apt-get install -y moby-cli
+    apt-get install -y moby-buildx
 elif [[ $DISTRIBUTION == almalinux* ]]; then
     yum install -y moby-engine
     yum install -y moby-cli
