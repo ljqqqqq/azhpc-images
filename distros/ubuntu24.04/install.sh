@@ -28,7 +28,7 @@ if [ "$SKU" != "GB200" ]; then
 fi
 
 # install Lustre client
-$COMPONENT_DIR/install_lustre_client.sh
+# $COMPONENT_DIR/install_lustre_client.sh
 
 # install DOCA OFED. Skip for non-IB SKUs. DOCA's ib_core breaks mana_ib on MANA-only hardware
 if sku_has_infiniband; then
