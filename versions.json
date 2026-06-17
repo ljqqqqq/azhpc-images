@@ -384,11 +384,11 @@
                 "nvidia_gb200": {
                     "baremetal": {
                         "driver": {
-                            "version": "580.126.20",
+                            "version": "580.167.20",
                             "major_version": "580"
                         },
                         "imex": {
-                            "version": "580.126.20-1"
+                            "version": "580.167.20-1"
                         }
                     }
                 },
@@ -726,8 +726,8 @@
                         "distribution": "Ubuntu24_04"
                     }
                 },                
-                "version": "2.5.2-1",
-                "commit": "c91ad9f178e5fb729fc5b6dc62a77c3bb364d6c9",
+                "version": "2.6",
+                "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
                 "distribution": "Ubuntu24_04"
             },
             "x86_64": {
@@ -806,7 +806,7 @@
                 }
             },
             "aarch64": {
-                "version": "2.28.9-1",
+                "version": "2.29.7-1",
                 "rdmasharpplugins": {
                     "commit": "v2.7.x"
                 }
