@@ -16,8 +16,7 @@ NCCL_DOWNLOAD_URL=https://github.com/NVIDIA/nccl/archive/refs/tags/${TARBALL}
 
 # Install NCCL
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    apt install -y build-essential devscripts debhelper fakeroot
-    apt install -y zlib1g-dev libibverbs-dev  
+    apt install -y build-essential devscripts debhelper fakeroot zlib1g-dev
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     tdnf install -y rpm-build rpmdevtools autoconf automake git libtool
 else
