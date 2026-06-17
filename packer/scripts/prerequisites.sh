@@ -109,7 +109,7 @@ install_ubuntu_gb200_kernel() {
     fi
 
     if [[ "${KERNEL_VERSION}" == "6.14" ]]; then
-        sudo apt-get install linux-azure-nvidia -y  
+        sudo apt-get install linux-azure-nvidia-6.14 -y  
     elif [[ "${KERNEL_VERSION}" == "6.17" ]]; then
         sudo apt-get install linux-azure-nvidia-6.17 -y  
     else #kernel 6.8
