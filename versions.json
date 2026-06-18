@@ -404,11 +404,11 @@
                     }
                 },
                 "driver": {
-                    "version": "580.167.20",
+                    "version": "580.167.08",
                     "major_version": "580"
                 },
                 "imex": {
-                    "version": "580.167.20-1"
+                    "version": "580.167.08-1"
                 }
             }
         },
@@ -830,9 +830,9 @@
                         }
                     }
                 },
-                "version": "2.29.7-1",
+                "version": "2.28.9-1",
                 "rdmasharpplugins": {
-                    "commit": "master"
+                    "commit": "v2.7.x"
                 }
             }
         }
