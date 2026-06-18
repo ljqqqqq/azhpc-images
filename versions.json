@@ -404,11 +404,11 @@
                     }
                 },
                 "driver": {
-                    "version": "580.167.20",
+                    "version": "580.167.08",
                     "major_version": "580"
                 },
                 "imex": {
-                    "version": "580.167.20-1"
+                    "version": "580.167.08-1"
                 }
             }
         },
