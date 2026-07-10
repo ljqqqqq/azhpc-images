@@ -166,7 +166,6 @@ else
 options nvidia NVreg_CreateImexChannel0=1
 EOF
 
-
     # Ensure modprobe settings are available when nvidia module loads on next boot
     dracut --force
 
