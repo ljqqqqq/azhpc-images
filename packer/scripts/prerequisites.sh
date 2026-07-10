@@ -323,7 +323,7 @@ install_ubuntu_lts_kernel() {
     local gpu_sku="${GPU_SKU}"
     
     # SKUs with rackscale NVLink use a special nvidia kernel, not LTS
-    if [[ "${NVLINK_RACKSCALE}" == "true" ]]; then
+    if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" == "6.8" ]]; then
         install_ubuntu_nvidia_kernel
         return $?
     fi
@@ -340,7 +340,7 @@ install_ubuntu_lts_kernel() {
         24.04)
             apt update
 
-            local kernel_ver="${KERNEL_VERSION:-6.8}"
+            local kernel_ver="7.0"
             echo "##[section]Installing kernel ${kernel_ver} for Ubuntu 24.04"
 
             # Build list of kernel minor versions to purge (everything except the target)
