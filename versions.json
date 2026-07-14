@@ -391,11 +391,11 @@
                     }
                 },
                 "driver": {
-                    "version": "580.126.20",
+                    "version": "580.167.08",
                     "major_version": "580"
                 },
                 "imex": {
-                    "version": "580.126.20-1"
+                    "version": "580.167.08-1"
                 }
             }
         },
@@ -703,8 +703,8 @@
                     "commit": "0f7366e73b019e7facf907381f6b0b2f5a1576e4",
                     "distribution": "Ubuntu24_04"
                 },
-                "version": "2.5.2-1",
-                "commit": "c91ad9f178e5fb729fc5b6dc62a77c3bb364d6c9",
+                "version": "2.6-1",
+                "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
                 "distribution": "Ubuntu24_04"
             },
             "x86_64": {
