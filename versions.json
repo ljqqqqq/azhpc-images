@@ -391,11 +391,11 @@
                     }
                 },
                 "driver": {
-                    "version": "580.173.02",
+                    "version": "580.167.08",
                     "major_version": "580"
                 },
                 "imex": {
-                    "version": "580.173.02-1"
+                    "version": "580.167.08-1"
                 }
             }
         },
