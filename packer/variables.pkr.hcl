@@ -568,16 +568,19 @@ locals {
   # When enable_first_party_specifics is on and no explicit regions are provided,
   # use the following pre-defined replication regions for internal workloads.
   _sig_replication_regions_map = {
-    "MI300X"                 = ["westus", "francecentral", "eastus2euap"]
-    "NCv6"                   = ["centraluseuap", "westus2", "southeastasia"]
-    "GB200"                  = ["centraluseuap", "eastus2euap", "northeurope", "westeurope"]
-    "GB200F"                 = ["southeastus5", "northeastus5", "centralus","westeurope", "eastus2euap"]
-    "A100"                   = ["southcentralus", "northcentralus", "westcentralus", "westus", "westus2", "westus3", "eastus", "eastus2", "centralus", "centraluseuap", "japaneast", "westeurope"]
+    "Standard_ND96isr_MI300X_v5"            = ["westus", "francecentral", "eastus2euap"]
+    "Standard_NC144lds_xl_RTXPRO6000BSE_v6" = ["centraluseuap", "westus2", "southeastasia"]
+    "Standard_ND128isr_NDR_GB200_v6"        = ["centraluseuap", "eastus2euap", "northeurope", "westeurope"]
+    "Standard_ND128isr_VR200_v6"            = ["centraluseuap", "eastus2euap", "northeurope", "westeurope"]
+    "ND144ISR_ETH_GB200_METAL_V6"           = ["southeastus5", "northeastus5", "centralus", "westeurope", "eastus2euap"]
+    "ND144ISR_ETH_VR200_METAL_V6"           = ["southeastus5", "northeastus5", "centralus", "westeurope", "eastus2euap"]
+    "Standard_ND96asr_v4"                   = ["southcentralus", "northcentralus", "westcentralus", "westus", "westus2", "westus3", "eastus", "eastus2", "centralus", "centraluseuap", "japaneast", "westeurope"]
+    "Standard_ND96amsr_A100_v4"             = ["southcentralus", "northcentralus", "westcentralus", "westus", "westus2", "westus3", "eastus", "eastus2", "centralus", "centraluseuap", "japaneast", "westeurope"]
   }
   _sig_replication_default = ["southcentralus", "northcentralus", "westcentralus", "westus", "westus2", "westus3", "eastus", "eastus2", "centralus", "centraluseuap"]
 
   first_party_sig_replication_regions = concat(
-    try(local._sig_replication_regions_map[local.gpu_sku], local._sig_replication_default),
+    try(local._sig_replication_regions_map[local.target_vm_size], local._sig_replication_default),
     [local.azure_location]
   )
   sig_replication_regions = (
