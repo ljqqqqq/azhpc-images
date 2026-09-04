@@ -24,13 +24,6 @@ if [[ "$GPU" == "AMD" ]]; then
     exit 1
 fi
 
-# These SKUs need driver, architecture, or network paths that have not been
-# validated on Ubuntu 26.04 yet.
-if [[ "$SKU" == "GB200" || "$SKU" == "VR200" || "$SKU" == "NCv6" ]]; then
-    echo "##[error]$SKU is not supported on Ubuntu 26.04 yet."
-    exit 1
-fi
-
 source ../../utils/set_properties.sh
 source ${UTILS_DIR}/utilities.sh
 
@@ -46,6 +39,17 @@ $COMPONENT_DIR/install_mpis.sh
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
     $COMPONENT_DIR/install_nvidiagpudriver.sh
+
+    if [ "$SKU" = "GB200" ]; then
+        # Install NVSHMEM
+        $COMPONENT_DIR/install_nvshmem.sh
+
+        # Install NVLOOM
+        $COMPONENT_DIR/install_nvloom.sh
+
+        # Install NVBandwidth tool
+        $COMPONENT_DIR/install_nvbandwidth_tool.sh
+    fi
     
     # Install NCCL
     $COMPONENT_DIR/install_nccl.sh

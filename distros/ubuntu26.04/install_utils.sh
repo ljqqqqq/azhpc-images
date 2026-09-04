@@ -67,9 +67,9 @@ apt-get -y install numactl \
 # and sha256-verified for reproducibility.
 # TODO(ubuntu26.04): once PMC publishes azcopy for 26.04, switch back to
 # `apt-get -y install azcopy` to align with the other Ubuntu distros.
-AZCOPY_VERSION="10.32.3"
-AZCOPY_DEB_URL="https://github.com/Azure/azure-storage-azcopy/releases/download/v${AZCOPY_VERSION}/azcopy-${AZCOPY_VERSION}.x86_64.deb"
-AZCOPY_DEB_SHA256="fab3836155cfe2fd250448f875a35dc593c91cd148d4276d39f242ce10ca861c"
+azcopy_metadata=$(get_component_config "azcopy")
+AZCOPY_DEB_URL=$(jq -r '.url' <<< "$azcopy_metadata")
+AZCOPY_DEB_SHA256=$(jq -r '.sha256' <<< "$azcopy_metadata")
 curl -fsSL -o azcopy.deb "${AZCOPY_DEB_URL}"
 echo "${AZCOPY_DEB_SHA256}  azcopy.deb" | sha256sum --check --strict
 apt-get -y install ./azcopy.deb

@@ -1,4 +1,18 @@
 {
+    "azcopy": {
+        "ubuntu26.04": {
+            "x86_64": {
+                "version": "10.32.3",
+                "sha256": "fab3836155cfe2fd250448f875a35dc593c91cd148d4276d39f242ce10ca861c",
+                "url": "https://github.com/Azure/azure-storage-azcopy/releases/download/v10.32.3/azcopy-10.32.3.x86_64.deb"
+            },
+            "aarch64": {
+                "version": "10.32.3",
+                "sha256": "dd7d865dac6fee3a98c0c5863a1baf9c8a25e09355298c53b854f2a910e3c931",
+                "url": "https://github.com/Azure/azure-storage-azcopy/releases/download/v10.32.3/azcopy-10.32.3.arm64.deb"
+            }
+        }
+    },
     "mpifileutils": {
         "common": {
             "version": "0.12",
