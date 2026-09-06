@@ -66,6 +66,54 @@ build {
     ]
   }
 
+  provisioner "shell-local" {
+    name           = "(1P specific) download mdatp onboarding package"
+    except         = (var.enable_first_party_specifics && local.os_family == "ubuntu" && local.distro_version == "26.04") ? [] : ["azure-arm.hpc"]
+    inline_shebang = var.default_inline_shebang
+    inline = [
+      "az storage blob download -f /tmp/WindowsDefenderATPOnboardingPackage.zip -c atponboardingpackage -n WindowsDefenderATPOnboardingPackage.zip --account-name azhpcstoralt --auth-mode login",
+      "unzip -o /tmp/WindowsDefenderATPOnboardingPackage.zip -d /tmp",
+      "chmod +r /tmp/MicrosoftDefenderATPOnboardingLinuxServer.py"
+    ]
+  }
+
+  provisioner "file" {
+    name        = "(1P specific) upload mdatp onboarding package"
+    except      = (var.enable_first_party_specifics && local.os_family == "ubuntu" && local.distro_version == "26.04") ? [] : ["azure-arm.hpc"]
+    source      = "/tmp/MicrosoftDefenderATPOnboardingLinuxServer.py"
+    destination = "/tmp/MicrosoftDefenderATPOnboardingLinuxServer.py"
+    generated   = true
+  }
+
+  provisioner "shell" {
+    name           = "(1P specific) install mdatp with onboarding script"
+    except         = (var.enable_first_party_specifics && local.os_family == "ubuntu" && local.distro_version == "26.04") ? [] : ["azure-arm.hpc"]
+    inline_shebang = var.default_inline_shebang
+    inline = [
+      <<-EOF
+        set -o pipefail
+
+        curl -sSL https://raw.githubusercontent.com/microsoft/mdatp-xplat/refs/heads/master/linux/installation/mde_installer.sh -o /tmp/mde_installer.sh
+        chmod +x /tmp/mde_installer.sh
+
+        installer_channel=prod
+        if [[ -r /etc/os-release ]]; then
+          # shellcheck disable=SC1091
+          . /etc/os-release
+          if [[ "$${ID:-}" == "ubuntu" && "$${VERSION_ID:-}" == "26.04" ]]; then
+            echo "[mdatp] Ubuntu 26.04 detected; patching mde_installer.sh and using prod channel."
+            sed -i 's#\^(20\.04|22\.04|24\.04)\$#^(20.04|22.04|24.04|26.04)$#' /tmp/mde_installer.sh
+            sed -i 's#elif { \[ "$DISTRO" = "debian" \] && \[ "$VERSION" = "13" \]; }; then#elif { [ "$DISTRO" = "debian" ] \&\& [ "$VERSION" = "13" ]; } || { [ "$DISTRO" = "ubuntu" ] \&\& [ "$VERSION" = "26.04" ]; }; then#' /tmp/mde_installer.sh
+            sed -i 's#\[\[ $VERSION != "24\.04" \]\]; then#[[ $VERSION != "24.04" ]] \&\& [[ $VERSION != "26.04" ]]; then#' /tmp/mde_installer.sh
+          fi
+        fi
+
+        sudo bash /tmp/mde_installer.sh --install --onboard /tmp/MicrosoftDefenderATPOnboardingLinuxServer.py --channel "$${installer_channel}"
+        rm -f /tmp/MicrosoftDefenderATPOnboardingLinuxServer.py /tmp/mde_installer.sh
+      EOF
+    ]
+  }
+
   provisioner "shell" {
     name            = "Install prerequisites (LTS kernel, package updates)"
     except          = local.skip_prerequisites ? ["azure-arm.hpc"] : []
