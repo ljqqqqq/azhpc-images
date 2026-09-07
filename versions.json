@@ -787,7 +787,12 @@
         },
         "ubuntu26.04": {
             "_comment": "Best-effort: gdrcopy is built from source, so the same upstream commit should work. The 'distribution' value MUST match what build-deb-packages.sh embeds in the produced .deb filename suffix (derived via lsb_release: '${ID}${VERSION_ID//./_}'), since install_gdrcopy.sh does dpkg -i on that exact filename.",
-            "common": {
+            "aarch64": {
+                "version": "2.6-1",
+                "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
+                "distribution": "Ubuntu26_04"
+            },
+            "x86_64": {
                 "version": "2.6-1",
                 "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
                 "distribution": "Ubuntu26_04"
