@@ -421,11 +421,11 @@
         "ubuntu26.04": {
             "aarch64": {
                 "driver": {
-                    "version": "580.167.08",
-                    "major_version": "580"
+                    "version": "610.57.04",
+                    "major_version": "610"
                 },
                 "imex": {
-                    "version": "580.167.08-1"
+                    "version": "610.57.04-1"
                 }
             },        
             "x86_64": {
@@ -579,12 +579,12 @@
         "ubuntu26.04": {
             "aarch64": {
                 "driver": {
-                    "version": "13.0",
+                    "version": "13.3",
                     "distribution": "ubuntu2604"
                 },
                 "samples": {
-                    "version": "13.0",
-                    "sha256": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79"
+                    "version": "13.3",
+                    "sha256": "fab59f405d6c0b87395ce6fc1d46d3f559c380c9a2704ab14d6dc0d3ce1cff16"
                 }
             },        
             "_comment": "distribution intentionally pinned to ubuntu2404: NVIDIA's compute/cuda/repos/ubuntu2604 pool currently ships only the driver/firmware/imex/fabricmanager packages and does NOT yet include cuda-toolkit-13-X. The ubuntu2404 pool ships the full set; .deb packages are not tied to the Ubuntu codename and DKMS rebuilds kernel modules against the running kernel (linux-azure-7.0). Revisit once compute/cuda/repos/ubuntu2604 carries cuda-toolkit packages.",
