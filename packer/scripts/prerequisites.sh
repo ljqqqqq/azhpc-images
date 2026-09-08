@@ -377,11 +377,6 @@ install_ubuntu_lts_kernel() {
                 apt-get purge -y linux-azure-lts-24.04 || true
             fi
 
-
-            if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" == "7.0" ]]; then
-                configure_nvlink_rackscale_kernel
-            fi
-
             apt autoremove -y
             apt upgrade -y
 
@@ -435,6 +430,9 @@ install_ubuntu_lts_kernel() {
             ;;
     esac
     
+    if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" == "7.0" ]]; then
+        configure_nvlink_rackscale_kernel
+    fi
     echo "Ubuntu LTS kernel installation complete"
 }
 
