@@ -139,7 +139,7 @@
         },
         "ubuntu26.04": {
             "aarch64": {
-                "version": "2.25.1",
+                "version": "2.51",
                 "sha256": "6b14c5e2b4fbec3c2de798334cb9e18aba90a3819c92fde00fbc9a953cf6593b",
                 "url": "https://content.mellanox.com/hpc/hpc-x/v2.51_cuda13/hpcx-v2.51-gcc-doca_ofed-ubuntu26.04-cuda13-aarch64.tbz"
             },
