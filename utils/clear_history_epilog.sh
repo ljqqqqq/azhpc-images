@@ -62,11 +62,94 @@ find_azurelinux_distro() {
 distro=`find_distro`
 echo "Detected distro: ${distro}"
 
+verify_final_cleanup() {
+    local path
+
+    if [[ ${distro} == *"Ubuntu"* ]] && dpkg -l | grep -qw mdatp; then
+        echo "ERROR: mdatp package is still present before image capture"
+        return 1
+    elif [[ ${distro} != *"Ubuntu"* ]] && rpm -q mdatp >/dev/null 2>&1; then
+        echo "ERROR: mdatp package is still present before image capture"
+        return 1
+    fi
+
+    if command -v mdatp >/dev/null 2>&1; then
+        echo "ERROR: mdatp executable is still present before image capture"
+        return 1
+    fi
+
+    if command -v systemctl >/dev/null 2>&1 && systemctl cat mdatp.service >/dev/null 2>&1; then
+        echo "ERROR: mdatp.service is still present before image capture"
+        return 1
+    fi
+
+    for path in \
+        /opt/microsoft/mdatp \
+        /var/opt/microsoft/mdatp \
+        /etc/opt/microsoft/mdatp \
+        /var/log/microsoft/mdatp; do
+        if [[ -e ${path} ]]; then
+            echo "ERROR: MDE path is still present before image capture: ${path}"
+            return 1
+        fi
+    done
+
+    for path in \
+        '/var/lib/waagent/*MDE.Linux*' \
+        '/var/log/azure/*MDE.Linux*' \
+        '/var/lib/GuestConfig/extension_logs/*MDE.Linux*'; do
+        if compgen -G "${path}" >/dev/null; then
+            echo "ERROR: MDE extension residue is still present before image capture: ${path}"
+            return 1
+        fi
+    done
+}
+
+# The Azure guest agent can auto-provision MDE again after clear_history.sh has
+# removed it. Stop the agent before the final package cleanup so no extension
+# operation can race image capture.
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl stop walinuxagent.service 2>/dev/null || true
+    systemctl stop waagent.service 2>/dev/null || true
+fi
+
+# Purge mdatp again immediately before image capture. The first purge happens
+# in clear_history.sh, but MDE may have been auto-provisioned again afterwards.
+if [[ ${distro} == *"Ubuntu"* ]]; then
+    if dpkg -l | grep -qw mdatp; then
+        DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 purge -y mdatp
+    fi
+elif [[ ${distro} == *"Azure Linux"* ]]; then
+    if rpm -q mdatp >/dev/null 2>&1; then
+        tdnf remove -y mdatp
+    fi
+else
+    if rpm -q mdatp >/dev/null 2>&1; then
+        yum remove -y mdatp
+    fi
+fi
+
 # Remove the AzNHC log
 sudo rm -f /opt/azurehpc/test/azurehpc-health-checks/health.log
 
 # Uninstall the OMS Agent
 wget -qO- https://raw.githubusercontent.com/microsoft/OMS-Agent-for-Linux/master/installer/scripts/uninstall.sh | sudo bash
+
+# Remove both agent data and extension state. These paths are checked by the
+# LISA certification script and must not be baked into the captured image.
+rm -rf \
+    /opt/microsoft/mdatp \
+    /var/opt/microsoft/mdatp \
+    /etc/opt/microsoft/mdatp \
+    /var/log/microsoft/mdatp \
+    /var/lib/waagent/*MDE.Linux* \
+    /var/log/azure/*MDE.Linux* \
+    /var/lib/GuestConfig/extension_logs/*MDE.Linux*
+
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload
+fi
+verify_final_cleanup
 
 
 # Switch to the root user
