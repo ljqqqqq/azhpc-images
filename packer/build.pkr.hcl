@@ -68,9 +68,9 @@ build {
     except         = var.enable_first_party_specifics ? [] : ["azure-arm.hpc"]
     inline_shebang = var.default_inline_shebang
     inline = [
-      "set -o pipefail",
-      "curl -sSL https://raw.githubusercontent.com/microsoft/mdatp-xplat/refs/heads/master/linux/installation/mde_installer.sh | sudo bash -s -- --install --onboard /tmp/MicrosoftDefenderATPOnboardingLinuxServer.py --channel prod",
-      "sudo mdatp threat policy set --type potentially_unwanted_application --action off",
+      "sudo dpkg --configure -a",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install --reinstall -y mdatp",
+      "sudo dpkg --audit",
       "rm -f /tmp/MicrosoftDefenderATPOnboardingLinuxServer.py"
     ]
   }
