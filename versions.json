@@ -36,9 +36,9 @@
                     "sha256": "ef4a16860fe1bf765f50605b331b5f4db35144b6d9dc914535261e1f68882636",
                     "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.3.0/host/doca-host_3.3.0-088000-26.01-ubuntu2404_arm64.deb"
                 },
-                "version": "3.3.0",
-                "sha256": "ef4a16860fe1bf765f50605b331b5f4db35144b6d9dc914535261e1f68882636",
-                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.3.0/host/doca-host_3.3.0-088000-26.01-ubuntu2404_arm64.deb"
+                "version": "3.5.0",
+                "sha256": "be2a37501432a74ea9fd7a6cb4aa1326e1a4d5b0761b4bd44e1edcb699995d8c",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.5.0/host/doca-host_3.5.0-082000-26.07-ubuntu2404_arm64.deb"
             }
         },
         "almalinux8.10": {
@@ -789,7 +789,7 @@
                     "version": "0.8",
                     "url": "https://github.com/NVIDIA/nvbandwidth"
                 },
-                "version": "0.9",
+                "version": "0.10.0",
                 "url": "https://github.com/NVIDIA/nvbandwidth"
             }
         }
@@ -813,7 +813,7 @@
                 "baremetal_3p": {
                     "version": "1:4.5.3-1"
                 },
-                "version": "1:4.6.1-1"
+                "version": "1:4.7.0-1"
             }
         },
         "azurelinux3.0": {
@@ -1061,7 +1061,7 @@
                     "version": "1.2.0",
                     "url": "https://github.com/NVIDIA/nvloom.git"
                 },
-                "version": "2.0.0",
+                "version": "2.1.0",
                 "url": "https://github.com/NVIDIA/nvloom.git"
             }
         }
