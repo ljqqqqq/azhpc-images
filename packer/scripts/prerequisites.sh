@@ -17,6 +17,9 @@ set -euox pipefail
 #   GPU_SKU          - GPU SKU (a100, h100, gb200, mi300x) - required
 #   GB200_PARTUUID   - Disk PARTUUID for GB200 builds (None for non-GB200)
 #   TARGET_NODE_TYPE - Target node type (azure_vm_regular/azure_vm_akshost/baremetal_1p/baremetal_3p)
+#   DOWNLOAD_KERNEL_ONLINE - Download kernel .deb packages from an online directory listing
+#   ONLINE_KERNEL_REPO_URL - Base URL containing the kernel .deb packages
+#   ONLINE_KERNEL_VERSION  - Version substring used to select kernel .deb packages
 # =============================================================================
 
 ####
@@ -117,6 +120,54 @@ EOF
 }
 
 ####
+# @Brief        : Download and install kernel Debian packages from an online repository
+# @Param        : repo_url - Base URL with an HTML directory listing
+# @Param        : version  - Kernel package version substring to select
+# @RetVal       : 0 on success
+####
+install_online_kernel_packages() {
+    local repo_url="${1%/}"
+    local version="$2"
+    local package_dir
+    local package
+    local package_url
+    local package_name
+    local packages=()
+    local downloaded_packages=()
+
+    package_dir=$(mktemp -d /tmp/kernel-packages.XXXXXX)
+    echo "##[section]Downloading kernel ${version} from online repo: ${repo_url}"
+
+    mapfile -t packages < <(
+        curl -fsSL "${repo_url}/" |
+            grep -oE 'href="[^"]+\.deb"' |
+            cut -d'"' -f2 |
+            grep -F "${version}" |
+            sort -u
+    )
+
+    if [[ ${#packages[@]} -eq 0 ]]; then
+        echo "ERROR: no kernel Debian packages matching ${version} were found at ${repo_url}" >&2
+        rm -rf "${package_dir}"
+        return 1
+    fi
+
+    for package in "${packages[@]}"; do
+        if [[ "${package}" =~ ^https?:// ]]; then
+            package_url="${package}"
+        else
+            package_url="${repo_url}/${package#./}"
+        fi
+        package_name=$(basename "${package%%\?*}")
+        curl -fL --retry 3 "${package_url}" -o "${package_dir}/${package_name}"
+        downloaded_packages+=("${package_dir}/${package_name}")
+    done
+
+    apt-get install -y "${downloaded_packages[@]}"
+    rm -rf "${package_dir}"
+}
+
+####
 # @Brief        : Install NVIDIA Grace-aware kernel for Ubuntu 24.04
 # @RetVal       : 0 on success
 ####
@@ -135,7 +186,9 @@ install_ubuntu_nvidia_kernel() {
     fi
     local ubuntu_codename="noble"
     kernel_ver="${KERNEL_VERSION:-6.8}"
-    if [ "$USE_UBUNTU_PPA_REPO" == "True" ]; then
+    if [[ "${DOWNLOAD_KERNEL_ONLINE:-false}" == "true" ]]; then
+        install_online_kernel_packages "${ONLINE_KERNEL_REPO_URL}" "${ONLINE_KERNEL_VERSION}"
+    elif [ "$USE_UBUNTU_PPA_REPO" == "True" ]; then
         echo "##[section] PPA kernel repo is enabled, installing PPA kernel version: $UBUNTU_PPA_KERNEL_PATCH_VERSION"
         sudo add-apt-repository -y "$UBUNTU_PPA_REPO_NAME"
         install_from_ppa_repo "linux-azure-nvidia-${kernel_ver}" "$UBUNTU_PPA_KERNEL_PATCH_VERSION" "$UBUNTU_PPA_REPO_NAME"

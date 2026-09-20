@@ -60,6 +60,9 @@ build {
       "USE_UBUNTU_PPA_REPO=${var.use_ubuntu_ppa_repo}",
       "UBUNTU_PPA_REPO_NAME=${var.ubuntu_ppa_repo_name}",
       "UBUNTU_PPA_KERNEL_PATCH_VERSION=${var.ubuntu_ppa_kernel_patch_version}",
+      "DOWNLOAD_KERNEL_ONLINE=${local.download_kernel_online}",
+      "ONLINE_KERNEL_REPO_URL=${local.online_kernel_repo_url}",
+      "ONLINE_KERNEL_VERSION=${local.online_kernel_version}",
       "GB200_PARTUUID=${var.gb200_partuuid}",
       "REFRESH_MODE=${local.refresh_mode}",
       "DEBIAN_FRONTEND=noninteractive"

@@ -103,15 +103,42 @@ variable "ubuntu_ppa_kernel_patch_version" {
   default     = env("UBUNTU_PPA_KERNEL_PATCH_VERSION")
 }
 
+variable "download_kernel_online" {
+  type        = string
+  description = "Download kernel Debian packages from an online repository instead of installing the kernel from an apt repository"
+  default     = env("DOWNLOAD_KERNEL_ONLINE")
+}
+
+variable "online_kernel_repo_url" {
+  type        = string
+  description = "Base URL whose directory listing contains the kernel Debian packages"
+  default     = env("ONLINE_KERNEL_REPO_URL")
+}
+
+variable "online_kernel_version" {
+  type        = string
+  description = "Kernel package version substring used to select Debian packages from the online repository"
+  default     = env("ONLINE_KERNEL_VERSION")
+}
+
 locals {
-  use_ubuntu_proposed_suite         = try(convert(lower(var.use_ubuntu_proposed_suite), bool), false)
-  use_ubuntu_ppa_repo               = try(convert(lower(var.use_ubuntu_ppa_repo), bool), false)
-  ubuntu_ppa_repo_name              = coalesce(var.ubuntu_ppa_repo_name, "None")
-  ubuntu_ppa_kernel_patch_version   = coalesce(var.ubuntu_ppa_kernel_patch_version, "None")
+  use_ubuntu_proposed_suite       = try(convert(lower(var.use_ubuntu_proposed_suite), bool), false)
+  use_ubuntu_ppa_repo             = try(convert(lower(var.use_ubuntu_ppa_repo), bool), false)
+  ubuntu_ppa_repo_name            = coalesce(var.ubuntu_ppa_repo_name, "None")
+  ubuntu_ppa_kernel_patch_version = coalesce(var.ubuntu_ppa_kernel_patch_version, "None")
+  download_kernel_online         = try(convert(lower(var.download_kernel_online), bool), false)
+  online_kernel_repo_url         = coalesce(var.online_kernel_repo_url, "None")
+  online_kernel_version          = coalesce(var.online_kernel_version, "None")
 
   # Validate: if use_ubuntu_ppa_repo is true, both PPA variables must be set (not "None")
   _ppa_valid = !local.use_ubuntu_ppa_repo || (local.ubuntu_ppa_repo_name != "None" && local.ubuntu_ppa_kernel_patch_version != "None")
   _ppa_check = local._ppa_valid ? true : file("ERROR: use_ubuntu_ppa_repo is true but ubuntu_ppa_repo_name and/or ubuntu_ppa_kernel_patch_version is not set")
+
+  # Online packages, Ubuntu proposed, and a PPA are mutually exclusive kernel sources.
+  _online_kernel_values_valid = !local.download_kernel_online || (local.online_kernel_repo_url != "None" && local.online_kernel_version != "None")
+  _online_kernel_values_check = local._online_kernel_values_valid ? true : file("ERROR: download_kernel_online is true but online_kernel_repo_url and/or online_kernel_version is not set")
+  _online_kernel_source_valid = !local.download_kernel_online || (!local.use_ubuntu_proposed_suite && !local.use_ubuntu_ppa_repo)
+  _online_kernel_source_check = local._online_kernel_source_valid ? true : file("ERROR: online kernel download cannot be combined with Ubuntu proposed or a PPA")
 }
 
 variable "target_vm_size" {
