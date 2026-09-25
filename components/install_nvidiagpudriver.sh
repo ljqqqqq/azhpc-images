@@ -36,16 +36,25 @@ if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
 elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # APT-based NVIDIA driver installation for Ubuntu
     NVIDIA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_metadata)
-    CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
 
-    if [ "$ARCHITECTURE" = "aarch64" ]; then
-        CUDA_ARCHITECTURE="sbsa"
-    else
-        CUDA_ARCHITECTURE="x86_64"
-    fi
     # Add NVIDIA CUDA APT repo (provides both driver and toolkit packages)
-    wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/cuda-keyring_1.1-1_all.deb
-    apt install -y ./cuda-keyring_1.1-1_all.deb
+    CUDA_SOURCE=$(jq -r '.driver.source' <<< $cuda_metadata)
+    if [[ "$CUDA_SOURCE" == "private" ]]; then
+        CUDA_REPO_FILE=$(jq -r '.driver.file' <<< $cuda_metadata)
+        CUDA_REPO_FILE="$TOP_DIR/internal_bits/$CUDA_REPO_FILE"
+    else
+        CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
+
+        if [ "$ARCHITECTURE" = "aarch64" ]; then
+            CUDA_ARCHITECTURE="sbsa"
+        else
+            CUDA_ARCHITECTURE="x86_64"
+        fi
+        
+        CUDA_REPO_FILE="cuda-keyring_1.1-1_all.deb"
+        wget "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/${CUDA_REPO_FILE}"
+    fi
+    apt install -y "$CUDA_REPO_FILE"
     apt-get update
 
     # MRC image uses local NVIDIA repo for nvidia driver packages
