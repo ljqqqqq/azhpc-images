@@ -17,36 +17,45 @@ if [[ "$#" -gt 0 ]]; then
     fi
 fi
 
-source ../../utils/set_properties.sh
 
-# remove packages requiring Ubuntu Pro for security updates
-./remove_unused_packages.sh
+if [[ "$SKU" == "V100" ]]; then
+    echo "##[error]V100 is not supported on Ubuntu 26.04 because NVIDIA does not provide a compatible CUDA toolkit."
+    exit 1
+fi
+
+# These SKUs need driver, architecture, or network paths that have not been
+# validated on Ubuntu 26.04 yet.
+if [[ "$SKU" == "GB200" || "$SKU" == "VR200" || "$SKU" == "NCv6" ]]; then
+    echo "##[error]$SKU is not supported on Ubuntu 26.04 yet."
+    exit 1
+fi
+
+source ../../utils/set_properties.sh
+source ${UTILS_DIR}/utilities.sh
 
 ./install_utils.sh
 
 # install DOCA OFED
 $COMPONENT_DIR/install_doca.sh
 
-if [ "$GPU" = "AMD" ]; then
-    # Install ROCm before MPI so HPC-X can rebuild UCX with ROCm support.
+if [[ "$GPU" == "AMD" ]]; then
     $COMPONENT_DIR/install_rocm.sh
 fi
 
-if [ "$GPU" = "NVIDIA" ]; then
-    # Install CUDA before MPI so HPC-X can rebuild Open MPI with CUDA support.
-    $COMPONENT_DIR/install_nvidiagpudriver.sh
-fi
-
-# install PMIX
-$COMPONENT_DIR/install_pmix.sh
-
-# install mpi libraries
+# Install MPI libraries. HPC-X 2.51 supplies the Open MPI 5, PMIx 5, hwloc,
+# and libevent stack used on Ubuntu 26.04.
 $COMPONENT_DIR/install_mpis.sh
 
 if [ "$GPU" = "NVIDIA" ]; then
+    # install nvidia gpu driver
+    $COMPONENT_DIR/install_nvidiagpudriver.sh
+    
     # Install NCCL
     $COMPONENT_DIR/install_nccl.sh
-    
+fi
+
+if [[ "$GPU" == "AMD" ]]; then
+    $COMPONENT_DIR/install_rccl.sh
 fi
 
 # Install Docker container runtime
@@ -57,22 +66,21 @@ if [ "$GPU" = "NVIDIA" ]; then
     $COMPONENT_DIR/install_dcgm.sh
 fi
 
-if [ "$GPU" = "AMD" ]; then
-    #install rccl and rccl-tests
-    $COMPONENT_DIR/install_rccl.sh
-fi
-
-# install Lustre client
+# install Lustre client; the shared installer skips kernel 7.0 until AMLFS
+# publishes a compatible package.
 $COMPONENT_DIR/install_lustre_client.sh
 
 # install mpifileutils
 $COMPONENT_DIR/install_mpifileutils.sh
 
-# install AMD libs
-$COMPONENT_DIR/install_amd_libs.sh
+if [ "$ARCHITECTURE" == "x86_64" ]; then
 
-# install Intel libraries
-$COMPONENT_DIR/install_intel_libs.sh
+    # install AMD libs
+    $COMPONENT_DIR/install_amd_libs.sh
+
+    # install Intel libraries
+    $COMPONENT_DIR/install_intel_libs.sh
+fi
 
 # install dynolog and dyno-relay-logger
 $COMPONENT_DIR/install_dynolog_drl.sh
@@ -93,6 +101,9 @@ $COMPONENT_DIR/hpc-tuning.sh
 # install Azure Linux Agent
 $COMPONENT_DIR/install_waagent.sh
 
+# install persistent rdma naming
+$COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
+
 # Install AZNFS Mount Helper
 $COMPONENT_DIR/install_aznfs.sh
 
@@ -102,15 +113,6 @@ $COMPONENT_DIR/install_hpcdiag.sh
 # install monitor tools
 $COMPONENT_DIR/install_monitoring_tools.sh
 
-# install persistent rdma naming
-$COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
-
-# add udev rule
-$COMPONENT_DIR/add-udev-rules.sh
-
-# copy test file
-$COMPONENT_DIR/copy_test_file.sh
-
 # install Azure/NHC Health Checks
 $COMPONENT_DIR/install_health_checks.sh "$GPU"
 
@@ -118,6 +120,12 @@ $COMPONENT_DIR/install_health_checks.sh "$GPU"
 $COMPONENT_DIR/write_kernel_os_version.sh
 
 $COMPONENT_DIR/install_azsecpack_prereqs.sh
+
+# add udev rule
+$COMPONENT_DIR/add-udev-rules.sh
+
+# copy test file
+$COMPONENT_DIR/copy_test_file.sh
 
 # disable cloud-init
 $COMPONENT_DIR/disable_cloudinit.sh
@@ -127,6 +135,9 @@ $COMPONENT_DIR/setup_sku_customizations.sh
 
 # scan vulnerabilities using Trivy
 $COMPONENT_DIR/trivy_scan.sh
+
+# Disable unattended upgrades
+./disable_auto_upgrade.sh
 
 # Disable Predictive Network interface renaming
 ./disable_predictive_interface_renaming.sh
