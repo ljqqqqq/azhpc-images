@@ -587,8 +587,8 @@
             },
             "aarch64": {
                 "driver": {
-                    "version": "13.0",
-                    "distribution": "ubuntu2404"
+                    "source": "private",
+                    "file": "nvidia-driver-local-repo-ubuntu2404-580.173.10_1.0-1_arm64.deb"
                 },
                 "samples": {
                     "version": "13.0",

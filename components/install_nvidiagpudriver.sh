@@ -54,7 +54,7 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         CUDA_REPO_FILE="cuda-keyring_1.1-1_all.deb"
         wget "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/${CUDA_REPO_FILE}"
     fi
-    apt install -y "$CUDA_REPO_FILE"
+    apt install -y "$(realpath "$CUDA_REPO_FILE")"
     apt-get update
 
     # MRC image uses local NVIDIA repo for nvidia driver packages
