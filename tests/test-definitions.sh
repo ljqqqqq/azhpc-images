@@ -127,6 +127,13 @@ function verify_hpcx_installation {
     fi
     
     module load mpi/hpcx
+    if [[ "$DISTRIBUTION" == "ubuntu26.04" ]]; then
+        ompi_info --version | grep -qE '^Open MPI v5\.'
+        check_exit_code "HPC-X uses Open MPI 5" "HPC-X did not report Open MPI 5"
+
+        pkg-config --atleast-version=5 pmix
+        check_exit_code "HPC-X uses PMIx 5" "HPC-X did not provide PMIx 5"
+    fi
     mpirun -np 2 --map-by ppr:2:node ${mpi_args} ${HPCX_OSU_DIR}/osu_latency
     check_exit_code "HPC-X" "Failed to run HPC-X"
     module unload mpi/hpcx
@@ -207,7 +214,11 @@ function verify_cuda_installation {
     fi
 
     # Verify the compilation of CUDA samples
-    /usr/local/cuda/samples/0_Introduction/mergeSort/mergeSort
+    if [[ -x /usr/local/cuda/samples/mergeSort ]]; then
+        /usr/local/cuda/samples/mergeSort
+    else
+        /usr/local/cuda/samples/0_Introduction/mergeSort/mergeSort
+    fi
     check_exit_code "CUDA Samples ${VERSION_CUDA}" "Failed to perform merge sort using CUDA Samples"
 }
 
@@ -308,7 +319,11 @@ function verify_rocm_installation {
     # Verify if ROCM is installed
     check_exists "/opt/rocm/"
 
-    amd_rocm_version=$(cat /opt/rocm/.info/version)
+    local rocm_prefix=/opt/rocm
+    if [[ "$DISTRIBUTION" == "ubuntu26.04" ]]; then
+        rocm_prefix=/opt/rocm/core
+    fi
+    amd_rocm_version=$(cat "$rocm_prefix/.info/version")
     check_exit_code "AMD ROCM version ${amd_rocm_version} found" "AMD ROCM not found"
 
     # Verify if AMD GPU driver exists
@@ -322,9 +337,9 @@ function verify_rccl_installation {
 
     amdgpumod=$(lsmod | grep "^amdgpu")
     check_exit_code "amdgpu driver is loaded" "No amdgpu driver"
-    
+
     case ${VMSIZE} in
-        standard_nd96isr_mi300x_v5) mpirun -np 8 \
+        standard_nd96isr_mi300x_v5) timeout 600 mpirun -np 8 \
             --allow-run-as-root \
             --map-by ppr:8:node \
             -x LD_LIBRARY_PATH=/opt/rccl/lib:$LD_LIBRARY_PATH \
@@ -529,57 +544,6 @@ function verify_dcgm_installation {
     check_exit_code "NVIDIA DCGM service is active" "NVIDIA DCGM service is inactive/dead!"
 }
 
-# Verify the exclusive GPU profiling context can actually be acquired.
-#
-# GPU hardware profiling is exclusive - only one profiling client per GPU at a
-# time. dynolog is built with the DCGM_FI_PROF_* fields; if it (or any other
-# client) holds that context, dcgm-exporter cannot acquire it and enters
-# CrashLoopBackOff. Rather than only inspecting dynolog's systemd state, this
-# probes the context the same way dcgm-exporter does: it asks the standalone
-# nv-hostengine (nvidia-dcgm.service) to watch a DCGM_FI_PROF_* profiling field.
-# If another client is holding the context exclusively, the watch fails.
-function verify_gpu_profiling_context_available {
-    # Only meaningful on NVIDIA images where DCGM is installed and running.
-    if ! command -v dcgmi &>/dev/null; then
-        echo "dcgmi not present; skipping GPU profiling context check [OK]"
-        return 0
-    fi
-    if ! systemctl is-active --quiet nvidia-dcgm; then
-        echo "nvidia-dcgm inactive; skipping GPU profiling context check [OK]"
-        return 0
-    fi
-
-    # 1001 = DCGM_FI_PROF_GR_ENGINE_ACTIVE, a DCP profiling field that requires
-    # the exclusive profiling context. -c 1 takes a single sample then exits.
-    local prof_field="1001"
-    local out rc
-    out=$(timeout 1m dcgmi dmon -e ${prof_field} -c 1 2>&1)
-    rc=$?
-
-    # GPUs that don't support DCP profiling at all are out of scope for this
-    # clash - treat as a skip rather than a failure.
-    if echo "$out" | grep -qiE "not supported|unsupported|profiling.*disabled"; then
-        echo "GPU profiling (DCP) not supported on this SKU; skipping check [OK]"
-        return 0
-    fi
-
-    # A held/exclusive context surfaces as a non-zero exit or an "in use" style
-    # error from DCGM.
-    if [[ $rc -ne 0 ]] || echo "$out" | grep -qiE "in use|already|could not be completed|resource"; then
-        echo "*** ${FUNCNAME[0]}: Error - could not acquire the GPU profiling context (DCGM field ${prof_field})!" >&2
-        echo "*** Another profiling client is likely holding it exclusively; dcgm-exporter will CrashLoopBackOff." >&2
-        if systemctl is-active --quiet dynolog.service 2>/dev/null; then
-            echo "*** Hint: dynolog.service is active and is the likely holder." >&2
-        fi
-        echo "*** dcgmi output:" >&2
-        echo "$out" >&2
-        exit_on_error
-        return
-    fi
-
-    echo "[OK] : GPU profiling context is available (DCGM field ${prof_field})"
-}
-
 function verify_sku_customization_service {
     # Check if the SKU customization service is active
     # Note: bash =~ is ERE, so use regex instead of glob patterns for matching
@@ -607,9 +571,11 @@ function verify_sunrpc_tcp_settings_service {
 }
 
 function verify_azure_persistent_rdma_naming_service {
-    # Check if the azure persistent rdma naming service is active
-    systemctl is-active --quiet azure_persistent_rdma_naming
-    check_exit_code "Azure persistent rdma naming service is active" "Azure persistent rdma naming service is inactive/dead!"
+    systemctl is-enabled --quiet azure_persistent_rdma_naming.service
+    check_exit_code "Azure persistent RDMA naming service is enabled" "Azure persistent RDMA naming service is not enabled!"
+
+    systemctl is-active --quiet azure_persistent_rdma_naming.timer
+    check_exit_code "Azure persistent RDMA naming timer is active" "Azure persistent RDMA naming timer is inactive/dead!"
 }
 
 function verify_nvbandwidth_setup {
