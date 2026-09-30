@@ -29,7 +29,7 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     ## use generic ubuntu marketplace image then this package sets up the right gpg keys for PMC.
     if [ ! -e /etc/apt/sources.list.d/microsoft-prod.list ]; then
         curl -sSL -O https://packages.microsoft.com/config/ubuntu/$UBUNTU_VERSION/packages-microsoft-prod.deb
-        dpkg -i packages-microsoft-prod.deb
+        apt install -y ./packages-microsoft-prod.deb
         rm packages-microsoft-prod.deb
     fi
     apt update
@@ -57,7 +57,9 @@ else
         rm packages-microsoft-prod.rpm
     fi
 
-    if [[ $OS_MAJOR_VERSION == "9" ]]; then 
+    if [[ $DISTRIBUTION == rhel* ]]; then
+        dnf config-manager --set-enabled codeready-builder-for-rhel-${OS_MAJOR_VERSION}-${ARCHITECTURE}-rhui-rpms
+    elif [[ $OS_MAJOR_VERSION == "9" ]]; then
         dnf config-manager --set-enabled crb
     elif  [[ $OS_MAJOR_VERSION == "8" ]]; then
         dnf config-manager --set-enabled powertools

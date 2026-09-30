@@ -18,19 +18,19 @@ locals {
 
 variable "os_family" {
   type        = string
-  description = "OS family: ubuntu, alma, rocky or azurelinux"
+  description = "OS family: ubuntu, alma, rocky, rhel or azurelinux"
   default     = "ubuntu"
 }
 
 variable "distro_version" {
   type        = string
-  description = "Distro version (e.g., 22.04, 24.04, 8.10, 9.8, 3.0)"
+  description = "Distro version (e.g., 22.04, 24.04, 26.04, 8.10, 9.8, 3.0)"
   default     = "24.04"
 }
 
 variable "os_version" {
   type        = string
-  description = "OS version consistent with internal ADO pipeline convention (ubuntu_24.04, ubuntu_22.04, alma8.10, alma9.8, rocky8.10, rocky9.8, azurelinux3.0)"
+  description = "OS version consistent with internal ADO pipeline convention (ubuntu_26.04, ubuntu_24.04, ubuntu_22.04, alma8.10, alma9.8, rocky8.10, rocky9.8, rhel8.10, rhel9.8, azurelinux3.0)"
   default     = env("OS_VERSION")
 }
 
@@ -40,10 +40,10 @@ locals {
   os_version_regex = "^(?P<os_family>[a-zA-Z]+)[-_]?(?P<distro_version>[0-9]+(?:\\.[0-9]+)?)$"
   os_family        = regex(local.os_version_regex, local.os_version)["os_family"]
   distro_version   = regex(local.os_version_regex, local.os_version)["distro_version"]
-  # Folder suffix for distros/ scripts. EL9 distros (AlmaLinux 9.*, Rocky 9.*)
+  # Folder suffix for distros/ scripts. EL9 distros (AlmaLinux, Rocky, RHEL 9.*)
   # share a single `9.x` folder since their install scripts are not minor-specific.
   # All other distros pin to the minor.
-  _os_script_folder_distro_version = ((local.os_family == "alma" || local.os_family == "rocky") && can(regex("^9\\.", local.distro_version))) ? "9.x" : local.distro_version
+  _os_script_folder_distro_version = (contains(["alma", "rocky", "rhel"], local.os_family) && can(regex("^9\\.", local.distro_version))) ? "9.x" : local.distro_version
   os_script_folder_name            = "${local.os_family == "alma" ? "almalinux" : local.os_family}${local._os_script_folder_distro_version}"
 }
 
@@ -65,6 +65,10 @@ locals {
       "9.8"  = "5.14"
     }
     "rocky" = {
+      "8.10" = "4.18"
+      "9.8"  = "5.14"
+    }
+    "rhel" = {
       "8.10" = "4.18"
       "9.8"  = "5.14"
     }
@@ -137,7 +141,7 @@ locals {
   gpu_sku = (
     local.target_vm_size == "Standard_ND40rs_v2" ? "V100" :
     local.target_vm_size == "Standard_ND96isr_MI300X_v5" ? "MI300X" :
-    contains(["Standard_ND128isr_NDR_GB200_v6", "ND144ISR_ETH_GB200_METAL_V6"], local.target_vm_size) ? "GB200" :
+    contains(["Standard_ND128isr_NDR_GB200_v6", "Standard_ND128isr_GB300_v6", "ND144ISR_ETH_GB200_METAL_V6"], local.target_vm_size) ? "GB200" :
     contains(["Standard_ND128isr_VR200_v6", "ND144ISR_ETH_VR200_METAL_V6"], local.target_vm_size) ? "VR200" :
     local.target_vm_size == "Standard_NC144lds_xl_RTXPRO6000BSE_v6" ? "NCv6" :
     "A100"
@@ -332,6 +336,10 @@ locals {
     },
     (local.tip_session_id != "None" && local.tip_session_id != null && local.tip_session_id != "") ? { "TipNode.SessionId" = local.tip_session_id } : {}
   ) : {}
+  # TODO(ubuntu26.04): Remove this exclusion once MDE officially supports
+  # Ubuntu 26.04. The current installer falls back to the Ubuntu 18.04
+  # repository and overwrites the valid microsoft-prod.list.
+  mde_exclusion_tag = (local.os_family == "ubuntu" && local.distro_version == "26.04") ? { "ExcludeMdeAutoProvisioning" = "True" } : {}
   owner_tag   = (local.owner_alias != null && local.owner_alias != "") ? { "Owner" = local.owner_alias } : {}
   buildid_tag = (var.build_buildid != null && var.build_buildid != "") ? { "BuildId" = var.build_buildid } : {}
   all_tags = merge(
@@ -339,6 +347,7 @@ locals {
     local.owner_tag,
     local.buildid_tag,
     var.extra_tags,
+    local.mde_exclusion_tag,
   )
 }
 
@@ -664,6 +673,7 @@ locals {
     "Standard_ND96amsr_A100_v4"             = ["azure_vm_regular"]
     "Standard_ND96isr_MI300X_v5"            = ["azure_vm_regular"]
     "Standard_ND128isr_NDR_GB200_v6"        = ["azure_vm_regular", "azure_vm_akshost", "baremetal_3p"]
+    "Standard_ND128isr_GB300_v6"            = ["azure_vm_regular", "azure_vm_akshost"]
     "Standard_ND128isr_VR200_v6"            = ["azure_vm_regular"]
     "Standard_NC144lds_xl_RTXPRO6000BSE_v6" = ["azure_vm_regular"]
     "ND144ISR_ETH_GB200_METAL_V6"           = ["baremetal_1p"]
@@ -769,6 +779,10 @@ locals {
         "rocky" = {
           "8.10" = ["resf", "rockylinux-x86_64", "8-base"],
           "9.8"  = ["resf", "rockylinux-x86_64", "9-base"]
+        },
+        "rhel" = {
+          "8.10" = ["RedHat", "RHEL", "8-lvm-gen2"],
+          "9.8"  = ["RedHat", "RHEL", "9-lvm-gen2"]
         }
       },
       "Marketplace-FIPS" = {
@@ -859,6 +873,6 @@ locals {
       }
     }
   }
-  internal_sig_image_definition = (local.skip_create_artifacts || local.is_experimental_image) ? (local.architecture == "x86_64" ? "Experimental" : "Experimental-arm64") : local.internal_sig_image_definition_details[local.azl_base_image_type][local.os_family][local.distro_version]
+  internal_sig_image_definition = (local.skip_create_artifacts || local.is_experimental_image) ? (local.architecture == "x86_64" ? "Experimental" : "Experimental-arm64") : local.os_family == "rhel" ? var.sig_image_name : local.internal_sig_image_definition_details[local.azl_base_image_type][local.os_family][local.distro_version]
   sig_image_name                = var.sig_image_name != "" ? var.sig_image_name : local.internal_sig_image_definition
 }
