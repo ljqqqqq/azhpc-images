@@ -9,7 +9,7 @@ DOCA_SOURCE=$(jq -r '.source' <<< $doca_metadata)
 HPCX_DOCA_OFED_DEPS_MARKER=hpcx-provides-doca-ofed-deps
 
 if [[ "$DOCA_SOURCE" == "private" ]]; then
-    DOCA_FILE=$(jq -r '.file' <<< $doca_metadata)
+    DOCA_FILE=$(jq -r '.repo_file' <<< $doca_metadata)
     DOCA_FILE="$TOP_DIR/internal_bits/$DOCA_FILE"
 else
     DOCA_URL=$(jq -r '.url' <<< $doca_metadata)
@@ -114,7 +114,7 @@ EOF
     (
         cd /tmp
         equivs-build "${marker_control}"
-        dpkg -i /tmp/${HPCX_DOCA_OFED_DEPS_MARKER}_*_all.deb
+        apt install -y /tmp/${HPCX_DOCA_OFED_DEPS_MARKER}_*_all.deb
     )
     rm -f /tmp/${HPCX_DOCA_OFED_DEPS_MARKER}_*_all.deb "${marker_control}"
 }
@@ -190,7 +190,7 @@ EOF
 }
 
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    dpkg -i $DOCA_FILE
+    apt install -y "$(realpath "${DOCA_FILE}")"
 
     # we prefer distro-shipped dkms and ignore the one from DOCA, unless there is evidence to the contrary
     cat > /etc/apt/preferences.d/doca-dkms-pin <<PIN
@@ -248,8 +248,13 @@ else
         echo "ERROR: no packages found from doca* repos after doca-ofed install" >&2
         exit 1
     fi
+    baseos_repo=baseos
+    if [[ $DISTRIBUTION == rhel* ]]; then
+        rhel_version=${DISTRIBUTION#rhel}
+        baseos_repo=rhel-${rhel_version%%.*}-for-${ARCHITECTURE}-baseos-rhui-rpms
+    fi
     mapfile -t baseos_pkgs < <(
-        dnf repoquery --quiet --repo=baseos --qf '%{name}\n' '*' | sort -u
+        dnf repoquery --quiet --repo="${baseos_repo}" --qf '%{name}\n' '*' | sort -u
     )
     mapfile -t baseos_conflicts < <(
         comm -12 \
@@ -259,7 +264,7 @@ else
     if [[ ${#baseos_conflicts[@]} -gt 0 ]]; then
         echo "Pinning ${#baseos_conflicts[@]} baseos package(s) shadowed by DOCA: ${baseos_conflicts[*]}"
         dnf config-manager --save \
-            --setopt="baseos.excludepkgs=${baseos_conflicts[*]}" \
+            --setopt="${baseos_repo}.excludepkgs=${baseos_conflicts[*]}" \
             >/dev/null
     fi
 fi
