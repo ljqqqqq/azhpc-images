@@ -9,7 +9,7 @@ fi
 
 # Placeholder for VR200 SKU, uses GB200 temporarily for installation purposes
 export GPU=$1
-export SKU=$([[ $2 == "VR200" ]] && echo "GB200" || echo "$2")
+export SKU=$2
 
 if [[ "$#" -gt 0 ]]; then
    if [[ "$GPU" != "NVIDIA" && "$GPU" != "AMD" ]]; then
@@ -44,7 +44,7 @@ if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
     $COMPONENT_DIR/install_nvidiagpudriver.sh
 
-    if [ "$SKU" = "GB200" ]; then
+    if [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
         # Install NVSHMEM
         $COMPONENT_DIR/install_nvshmem.sh
 

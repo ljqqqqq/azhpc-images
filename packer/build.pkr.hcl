@@ -129,10 +129,9 @@ build {
     ]
   }
 
-  // Placeholder, will check whether VR200 really needs internal bits
   provisioner "shell-local" {
-    name           = "(1P specific) download and extract GB200 prebuilts"
-    except         = (var.enable_first_party_specifics && !var.skip_hpc && !local.refresh_mode && local.os_family == "ubuntu" && local.distro_version == "24.04" && local.nvlink_rackscale) ? [] : ["azure-arm.hpc"]
+    name           = "(1P specific) download and extract GB/VR prebuilts"
+    except         = (var.enable_first_party_specifics && !var.skip_hpc && !local.refresh_mode && local.os_family == "ubuntu" && local.nvlink_rackscale) ? [] : ["azure-arm.hpc"]
     inline_shebang = var.default_inline_shebang
     inline = [
       "if [[ -z \"${var.internal_bits_container_name}\" || -z \"${var.internal_bits_blob_name}\" || \"${var.internal_bits_container_name}\" =~ ^[Nn]one$ || \"${var.internal_bits_blob_name}\" =~ ^[Nn]one$ ]]; then echo 'Skipping internal bits download: INTERNAL_BITS_CONTAINER_NAME or INTERNAL_BITS_BLOB_NAME is unset/None'; exit 0; fi",
