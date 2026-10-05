@@ -18,7 +18,19 @@ apt-get update
 # during the transition to Ubuntu 26.04.
 apt-get -y --allow-remove-essential install coreutils-from-gnu coreutils-from-uutils-
 apt-get -y install build-essential
-apt-get -y install numactl \
+apt-get -y install ca-certificates \
+                   gcc \
+                   g++ \
+                   git \
+                   gnupg \
+                   make \
+                   mokutil \
+                   numactl \
+                   pciutils \
+                   chrony \
+                   kdump-tools \
+                   cloud-init \
+                   walinuxagent \
                    rpm \
                    libnuma-dev \
                    libmpc-dev \
@@ -49,6 +61,7 @@ apt-get -y install numactl \
                    net-tools \
                    libsecret-1-0 \
                    python3 \
+                   python3-dev \
                    python3-pip \
                    python3-setuptools \
                    pkg-config \

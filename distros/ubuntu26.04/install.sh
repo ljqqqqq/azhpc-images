@@ -7,7 +7,6 @@ if [ -z "$1" ] || [ -z "$2" ]; then
     exit 1
 fi
 
-# Placeholder for VR200 SKU, uses GB200 temporarily for installation purposes
 export GPU=$1
 export SKU=$2
 

@@ -4,9 +4,18 @@ set -e
 DEST_DIR=/opt/azurehpc/tools
 mkdir -p $DEST_DIR
 
-wget https://raw.githubusercontent.com/microsoft/lis-test/master/WS2012R2/lisa/tools/KVP/kvp_client.c
+KVP_SOURCE_FILE=/tmp/kvp_client.c
 
-mv ./kvp_client.c $DEST_DIR
+curl -fsSL \
+    "https://raw.githubusercontent.com/microsoft/lis-test/master/WS2012R2/lisa/tools/KVP/kvp_client.c" \
+    -o "$KVP_SOURCE_FILE"
+install -m 0644 "$KVP_SOURCE_FILE" "$DEST_DIR/kvp_client.c"
 
-gcc -Wno-error=implicit-function-declaration -Wno-error=implicit-int \
-    $DEST_DIR/kvp_client.c -o $DEST_DIR/kvp_client
+gcc \
+    -std=gnu89 \
+    -Wno-implicit-int \
+    -Wno-implicit-function-declaration \
+    "$DEST_DIR/kvp_client.c" \
+    -o "$DEST_DIR/kvp_client"
+
+rm -f "$KVP_SOURCE_FILE"
