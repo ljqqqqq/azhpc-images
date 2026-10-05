@@ -66,7 +66,8 @@ if sku_uses_ipoib; then
 fi
 echo ib_umad | sudo tee /etc/modules-load.d/ib_umad.conf
 
-# copy kvp client file
+# Install Hyper-V KVP daemon and copy the KVP client
+$COMPONENT_DIR/install_hyperv_kvp.sh
 $COMPONENT_DIR/copy_kvp_client.sh
 
 # copy torset tool

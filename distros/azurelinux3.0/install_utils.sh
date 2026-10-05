@@ -122,7 +122,8 @@ make install
 popd
 rm -rf /tmp/azure-vm-utils
 
-# copy kvp client file
+# Install Hyper-V KVP daemon and copy the KVP client
+$COMPONENT_DIR/install_hyperv_kvp.sh
 $COMPONENT_DIR/copy_kvp_client.sh
 
 # copy torset tool

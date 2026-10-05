@@ -25,6 +25,21 @@ elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     if dnf list installed azsec-monitor >/dev/null 2>&1; then dnf remove -y azsec-monitor; fi
 fi
 
+# Install and enable the distro-native kdump service. Do not start it while
+# building the image; it becomes active after booting with crashkernel memory.
+if [[ $DISTRIBUTION == ubuntu* ]]; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y kdump-tools
+    if grep -q '^USE_KDUMP=' /etc/default/kdump-tools; then
+        sed -i 's/^USE_KDUMP=.*/USE_KDUMP=1/' /etc/default/kdump-tools
+    else
+        echo 'USE_KDUMP=1' >> /etc/default/kdump-tools
+    fi
+    systemctl enable kdump-tools
+elif [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $DISTRIBUTION == rhel* ]] || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
+    dnf install -y kexec-tools
+    systemctl enable kdump
+fi
+
 if [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
     echo "net.core.rmem_max = 2147483647" >> /etc/sysctl.conf
     echo "net.core.wmem_max = 2147483647" >> /etc/sysctl.conf
