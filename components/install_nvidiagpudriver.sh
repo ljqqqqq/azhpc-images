@@ -7,11 +7,9 @@ source ${UTILS_DIR}/utilities.sh
 nvidia_metadata=$(get_component_config "nvidia")
 cuda_metadata=$(get_component_config "cuda")
 
-# Some configurations, such as MRC images and certain CRDs, require NVIDIA
-# driver packages from a local NVIDIA repository. This repository contains
-# driver packages but does not contain the CUDA toolkit, so install drivers
-# from the local repository and continue to install the CUDA toolkit from the
-# online CUDA repository.
+# Some configurations, such as MRC images and certain CRDs, require local
+# NVIDIA repositories staged in internal_bits. Driver and CUDA repositories
+# are selected independently from component metadata.
 function install_from_nvidia_local_repo {
     local repo_file=$1
     local repo_dir=${repo_file%%_*}
@@ -24,6 +22,15 @@ Package: *
 Pin: origin ""
 Pin-Priority: 1001
 EOF
+    apt update
+}
+
+function install_from_cuda_local_repo {
+    local repo_file=$1
+    local repo_dir=${repo_file%%_*}
+
+    apt install -y "$TOP_DIR/internal_bits/$repo_file"
+    cp /var/$repo_dir/cuda-*-keyring.gpg /usr/share/keyrings/
     apt update
 }
 
@@ -57,45 +64,65 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # APT-based NVIDIA driver installation for Ubuntu
     NVIDIA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_metadata)
     CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
+    CUDA_SOURCE=$(jq -r '.driver.source // "public"' <<< $cuda_metadata)
 
     if [ "$ARCHITECTURE" = "aarch64" ]; then
         CUDA_ARCHITECTURE="sbsa"
     else
         CUDA_ARCHITECTURE="x86_64"
     fi
-    # Add NVIDIA CUDA APT repo (provides both driver and toolkit packages)
-    wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/cuda-keyring_1.1-1_all.deb
-    apt install -y ./cuda-keyring_1.1-1_all.deb
-    apt-get update
+    if [ "$CUDA_SOURCE" = "private" ]; then
+        NVIDIA_CUDA_REPO_FILE=$(jq -r '.driver.repo_file' <<< $cuda_metadata)
+        install_from_cuda_local_repo "$NVIDIA_CUDA_REPO_FILE"
+    else
+        # Add NVIDIA CUDA APT repo (provides both driver and toolkit packages)
+        wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/cuda-keyring_1.1-1_all.deb
+        apt install -y ./cuda-keyring_1.1-1_all.deb
+        apt-get update
+    fi
 
     NVIDIA_DRIVER_SOURCE=$(jq -r '.driver.source' <<< $nvidia_metadata)
     if _is_mrc_network || [ "$NVIDIA_DRIVER_SOURCE" = "private" ]; then
         NVIDIA_GPU_DRIVER_REPO_FILE=$(jq -r '.driver.repo_file' <<< $nvidia_metadata)
         install_from_nvidia_local_repo "$NVIDIA_GPU_DRIVER_REPO_FILE"
     fi
-    # Pin the driver version and install via APT packages
-    apt install nvidia-driver-pinning-${NVIDIA_DRIVER_VERSION} -y
-
-    if [ "$SKU" = "V100" ]; then
-        # V100 requires proprietary kernel modules
-        apt install cuda-drivers -y
-    elif [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
-        NVIDIA_GPU_DRIVER_MAJOR_VERSION=$(jq -r '.driver.major_version' <<< $nvidia_metadata)
-        apt install nvidia-dkms-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-driver-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-modprobe -y
+    if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
+        apt-get install -y \
+            "nvidia-dkms-open=${NVIDIA_DRIVER_VERSION}" \
+            "nvidia-headless-open=${NVIDIA_DRIVER_VERSION}" \
+            "nvidia-modprobe=${NVIDIA_DRIVER_VERSION}" \
+            "nvidia-persistenced=${NVIDIA_DRIVER_VERSION}"
     else
-        # A100, H100, H200 use open kernel modules
-        apt install nvidia-open -y
+        # Pin the driver version and install via APT packages
+        apt install nvidia-driver-pinning-${NVIDIA_DRIVER_VERSION} -y
+
+        if [ "$SKU" = "V100" ]; then
+            # V100 requires proprietary kernel modules
+            apt install cuda-drivers -y
+        elif [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
+            NVIDIA_GPU_DRIVER_MAJOR_VERSION=$(jq -r '.driver.major_version' <<< $nvidia_metadata)
+            apt install nvidia-dkms-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-driver-$NVIDIA_GPU_DRIVER_MAJOR_VERSION-open nvidia-modprobe -y
+        else
+            # A100, H100, H200 use open kernel modules
+            apt install nvidia-open -y
+        fi
     fi
 
     if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-        NVIDIA_DRIVER_VERSION=$(dpkg-query -W -f='${Version}' nvidia-open | sed 's/-.*//')
+        if [[ "$SKU" == "VR200" ]]; then
+            NVIDIA_DRIVER_VERSION=$(dpkg-query -W -f='${Version}' nvidia-dkms-open | sed 's/-.*//')
+        else
+            NVIDIA_DRIVER_VERSION=$(dpkg-query -W -f='${Version}' nvidia-open | sed 's/-.*//')
+        fi
     fi
 
     # Remove unused configuration file if created by the NVIDIA driver package
     rm -f /etc/modprobe.d/nvidia-graphics-drivers-kms.conf
 
-    # Apply nvprofiling settings
-    echo 'options nvidia NVreg_RestrictProfilingToAdminUsers=0' | tee /etc/modprobe.d/nvprofiling.conf
+    # The VR200 recipe keeps profiling restricted to administrators by default.
+    if [[ "$SKU" != "VR200" ]]; then
+        echo 'options nvidia NVreg_RestrictProfilingToAdminUsers=0' | tee /etc/modprobe.d/nvprofiling.conf
+    fi
 
     # nvidia-peermem is NOT modprobe'd at build time. Loading it before the
     # first reboot is fragile across the matrix of distros / kernels we
@@ -147,7 +174,12 @@ if [[ "$TARGET_NODE_TYPE" != "azure_vm_akshost" ]]; then
 
     if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         # NVIDIA APT repo already configured during driver installation
-        apt install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
+        CUDA_TOOLKIT_PACKAGE_VERSION=$(jq -r '.driver.package_version // empty' <<< $cuda_metadata)
+        if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
+            apt install -y "cuda-toolkit-${CUDA_DRIVER_VERSION//./-}=${CUDA_TOOLKIT_PACKAGE_VERSION}"
+        else
+            apt install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
+        fi
     elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then    
         dnf install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
     else
@@ -182,8 +214,9 @@ if [[ "$TARGET_NODE_TYPE" != "azure_vm_akshost" ]]; then
         dnf install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
     fi
 
-    echo 'export PATH="${PATH:+$PATH:}/usr/local/cuda/bin"' | tee /etc/profile.d/cuda.sh > /dev/null
-    echo 'export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}/usr/local/cuda/lib64"' | tee -a /etc/profile.d/cuda.sh > /dev/null
+    echo 'export CUDA_HOME=/usr/local/cuda' | tee /etc/profile.d/cuda.sh > /dev/null
+    echo 'export PATH="$CUDA_HOME/bin${PATH:+:$PATH}"' | tee -a /etc/profile.d/cuda.sh > /dev/null
+    echo 'export LD_LIBRARY_PATH="$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"' | tee -a /etc/profile.d/cuda.sh > /dev/null
 
     # Ensure proper permissions
     chmod 644 /etc/profile.d/cuda.sh
@@ -201,8 +234,10 @@ if [[ "${NVLINK_RACKSCALE,,}" != "true" ]]; then
     # Install nvidia fabric manager (required for ND96asr_v4)
     $COMPONENT_DIR/install_nvidia_fabric_manager.sh
 else
-    # Apply nvprofiling settings
-    echo 'options nvidia NVreg_RestrictProfilingToAdminUsers=0' | tee /etc/modprobe.d/nvprofiling.conf
+    # The VR200 recipe keeps profiling restricted to administrators by default.
+    if [[ "$SKU" != "VR200" ]]; then
+        echo 'options nvidia NVreg_RestrictProfilingToAdminUsers=0' | tee /etc/modprobe.d/nvprofiling.conf
+    fi
 
     # Enable CDMM mode
     echo 'options nvidia NVreg_CoherentGPUMemoryMode=driver' | tee /etc/modprobe.d/nvidia-openrm.conf
@@ -214,7 +249,14 @@ else
     if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
         dnf install -y nvidia-imex-${IMEX_VERSION}
     elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-        apt-get install nvidia-imex -y
+        if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
+            NVIDIA_IMEX_LIBRARY_VERSION=$(jq -r '.driver.version' <<< $nvidia_metadata)
+            apt-get install -y \
+                "libnvidia-imex1=${NVIDIA_IMEX_LIBRARY_VERSION}" \
+                "nvidia-imex-direct=${IMEX_VERSION}"
+        else
+            apt-get install nvidia-imex -y
+        fi
     else
         echo "Unsupported distribution for nvidia-imex: $DISTRIBUTION"
         exit 1

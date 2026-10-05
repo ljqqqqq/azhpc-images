@@ -236,6 +236,7 @@ function set_vm_properties {
         if ! set_sku_family_hook; then
             case "${VMSIZE}" in
                 standard_nd128is*_gb[2-3]00_v6) export SKU_FAMILY="gb-family" ;;
+                standard_nd128isr_vr200_v6) export SKU_FAMILY="vr200" ;;
                 standard_nc*_rtxpro6000bse_v6)  export SKU_FAMILY="ncv6" ;;
             esac
         fi

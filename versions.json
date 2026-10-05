@@ -471,7 +471,7 @@
                 "azure_vm_regular": {
                     "nvidia_vr200": {
                         "driver": {
-                            "version": "620.47",
+                            "version": "620.47-1ubuntu1",
                             "major_version": "620",
                             "source": "private",
                             "repo_file": "nvidia-driver-local-repo-ubuntu2604-620.47_1.0-1_arm64.deb"
@@ -663,8 +663,8 @@
                         },
                         "samples": {
                             "version": "13.4",
-                            "sha256": "1206bf1f1bc1c4176af17826a7c72ac94c4caf0a4fed7b61379f0041965ed707",
-                            "architectures": "100;110"
+                            "commit": "5443602d89ed99aede2e4b7bf329daddeadb320e",
+                            "sha256": "1206bf1f1bc1c4176af17826a7c72ac94c4caf0a4fed7b61379f0041965ed707"
                         }
                     }
                 }

@@ -8,6 +8,7 @@ cuda_metadata=$(get_component_config "cuda")
 CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
 CUDA_SAMPLES_VERSION=$(jq -r '.samples.version' <<< $cuda_metadata)
 CUDA_SAMPLES_SHA256=$(jq -r '.samples.sha256' <<< $cuda_metadata)
+CUDA_SAMPLES_COMMIT=$(jq -r '.samples.commit // empty' <<< "$cuda_metadata")
 
 # Download and build CUDA samples
 TARBALL="v${CUDA_SAMPLES_VERSION}.tar.gz"
@@ -19,6 +20,9 @@ mkdir build && cd build
 CMAKE_OPTIONS=(-DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc)
 if [[ -f ../cmake/InstallSamples.cmake ]]; then
 	CMAKE_OPTIONS+=(-DCUDA_SAMPLES_INSTALL_DIR=/usr/local/cuda-${CUDA_DRIVER_VERSION}/samples)
+fi
+if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
+	CMAKE_OPTIONS+=("-DCMAKE_CUDA_ARCHITECTURES=100;110" -DCMAKE_BUILD_TYPE=Release)
 fi
 cmake "${CMAKE_OPTIONS[@]}" ..
 make -j $(nproc)

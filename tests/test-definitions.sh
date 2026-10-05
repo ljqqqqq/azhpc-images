@@ -214,12 +214,19 @@ function verify_cuda_installation {
     fi
 
     # Verify the compilation of CUDA samples
-    if [[ -x /usr/local/cuda/samples/mergeSort ]]; then
+    if [[ "${SKU_FAMILY:-}" == "vr200" ]]; then
+        /usr/local/cuda/samples/segmentationTreeThrust
+        check_exit_code "CUDA segmentationTreeThrust sample" "Failed to run segmentationTreeThrust"
+
+        /usr/local/cuda/samples/radixSortThrust | grep -q "Test passed"
+        check_exit_code "CUDA radixSortThrust sample" "Failed to run radixSortThrust"
+    elif [[ -x /usr/local/cuda/samples/mergeSort ]]; then
         /usr/local/cuda/samples/mergeSort
+        check_exit_code "CUDA Samples ${VERSION_CUDA}" "Failed to perform merge sort using CUDA Samples"
     else
         /usr/local/cuda/samples/0_Introduction/mergeSort/mergeSort
+        check_exit_code "CUDA Samples ${VERSION_CUDA}" "Failed to perform merge sort using CUDA Samples"
     fi
-    check_exit_code "CUDA Samples ${VERSION_CUDA}" "Failed to perform merge sort using CUDA Samples"
 }
 
 function verify_nccl_installation {
