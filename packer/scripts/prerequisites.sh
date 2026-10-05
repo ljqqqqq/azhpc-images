@@ -408,18 +408,28 @@ install_ubuntu_lts_kernel() {
         26.04)
             apt update
 
-            # Ubuntu 26.04 (Resolute Raccoon) ships linux-azure-7.0 (kernel 7.0.0-*-azure)
-            # as the versioned Azure meta-package. Allow KERNEL_VERSION to override.
+            local ubuntu_codename="resolute"
             local kernel_ver="${KERNEL_VERSION:-7.0}"
-            echo "##[section]Installing kernel ${kernel_ver} for Ubuntu 26.04"
+            local kernel_pkg="linux-azure-${kernel_ver}"
 
-            apt install -y linux-azure-${kernel_ver}
-            # linux-modules-extra-azure-${kernel_ver} is not published for 7.0 in resolute;
-            # contents were folded into linux-modules-azure-${kernel_ver}. Install only if present.
-            if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
-                apt install -y linux-modules-extra-azure-${kernel_ver}
+            if [ "$USE_UBUNTU_PPA_REPO" == "True" ]; then
+                echo "##[section] PPA kernel repo is enabled, installing PPA kernel version: $UBUNTU_PPA_KERNEL_PATCH_VERSION"
+                sudo add-apt-repository -y "$UBUNTU_PPA_REPO_NAME"
+                if [[ "${NVLINK_RACKSCALE}" == "true" ]]; then
+                    kernel_pkg="linux-azure-64k"
+                fi
+                install_from_ppa_repo "${kernel_pkg}" "$UBUNTU_PPA_KERNEL_PATCH_VERSION" "$UBUNTU_PPA_REPO_NAME"
+            elif [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
+                install_from_proposed_suite "${ubuntu_codename}" "${kernel_pkg}"
             else
-                echo "##[warning]linux-modules-extra-azure-${kernel_ver} is not in the archive; skipping (modules already in linux-modules-azure-${kernel_ver})."
+                apt install -y "${kernel_pkg}"
+                # linux-modules-extra-azure-${kernel_ver} is not published for 7.0 in resolute;
+                # contents were folded into linux-modules-azure-${kernel_ver}. Install only if present.
+                if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
+                    apt install -y linux-modules-extra-azure-${kernel_ver}
+                else
+                    echo "##[warning]linux-modules-extra-azure-${kernel_ver} is not in the archive; skipping (modules already in linux-modules-azure-${kernel_ver})."
+                fi
             fi
 
             apt autoremove -y
