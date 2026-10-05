@@ -67,7 +67,8 @@ SKU_CUDA_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata | cut -d'.' -f1)
 # the repo is already added during nvidia/ cuda installations
 
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
+    if [[ $DISTRIBUTION == "ubuntu26.04" &&
+          ( "${SKU}" != "VR200" || "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ) ]]; then
         apt-get install -y \
             datacenter-gpu-manager-4-cuda${CUDA_VERSION} \
             datacenter-gpu-manager-4-core \
@@ -94,7 +95,8 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # In practice though, DCGM requires both cuda12 and cuda13 support packages (https://github.com/NVIDIA/DCGM/issues/254).
     if [[ "${SKU_CUDA_VERSION}" -lt "${CUDA_VERSION}" ]]; then
         echo "Installing DCGM packages for SKU-specific CUDA ${SKU_CUDA_VERSION}"
-        if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
+        if [[ $DISTRIBUTION == "ubuntu26.04" &&
+              ( "${SKU}" != "VR200" || "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ) ]]; then
             apt-get install -y \
                 datacenter-gpu-manager-4-cuda${SKU_CUDA_VERSION} \
                 datacenter-gpu-manager-4-proprietary-cuda${SKU_CUDA_VERSION} \
@@ -106,7 +108,8 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
                 datacenter-gpu-manager-4-multinode-cuda${SKU_CUDA_VERSION}=${DCGM_VERSION}
         fi
     fi
-    if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
+    if [[ $DISTRIBUTION == "ubuntu26.04" &&
+          ( "${SKU}" != "VR200" || "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ) ]]; then
         DCGM_VERSION=$(dpkg-query -W -f='${Version}' datacenter-gpu-manager-4-core)
     fi
 elif [[ $DISTRIBUTION == *"azurelinux"* ]]; then

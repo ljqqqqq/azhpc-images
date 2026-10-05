@@ -10,10 +10,21 @@ fi
 
 # Install Moby Engine and CLI
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    # Ubuntu 26.04 no longer ships Microsoft's moby-* packages; switch to
-    # Canonical's docker.io / docker-buildx on all architectures.
     if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-        apt-get install -y docker.io docker-buildx
+        if [[ "${SKU}" == "VR200" && "${TARGET_NODE_TYPE:-azure_vm_regular}" == azure_vm_* ]]; then
+            moby_metadata=$(get_component_config "moby")
+            MOBY_VERSION=$(jq -r '.version' <<< "$moby_metadata")
+            moby_engine_candidate=$(apt-cache policy moby-engine | awk '/Candidate:/ {print $2}')
+            moby_cli_candidate=$(apt-cache policy moby-cli | awk '/Candidate:/ {print $2}')
+            [[ "$moby_engine_candidate" == "${MOBY_VERSION}-"* ]]
+            [[ "$moby_cli_candidate" == "${MOBY_VERSION}-"* ]]
+            apt-get install -y \
+                "moby-engine=${moby_engine_candidate}" \
+                "moby-cli=${moby_cli_candidate}" \
+                moby-buildx
+        else
+            apt-get install -y docker.io docker-buildx
+        fi
     elif [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" == "baremetal_3p" ]]; then
         # Baremetal aarch64: pin to a specific moby version from the baremetal package repo.
         moby_metadata=$(get_component_config "moby")
@@ -69,7 +80,9 @@ docker_version=$(docker --version | awk -F' ' '{print $3}')
 write_component_version "DOCKER" ${docker_version::-1}
 
 if [[ $DISTRIBUTION == ubuntu* ]]; then
-    if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
+    if dpkg-query -W moby-engine &>/dev/null; then
+        moby_version=$(dpkg-query -W -f='${Version}' moby-engine)
+    elif [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
         moby_version=$(dpkg-query -W -f='${Version}' docker.io)
     else
         moby_version=$(apt list --installed | grep moby-engine | awk -F' ' '{print $2}')

@@ -16,10 +16,22 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
 
     apt-get update
     # Install NVIDIA container toolkit and mark NVIDIA packages on hold
-    apt-get install -y nvidia-container-toolkit
-    apt-mark hold nvidia-container-toolkit
-    apt-mark hold libnvidia-container-tools
-    apt-mark hold libnvidia-container1
+    if [[ $DISTRIBUTION == "ubuntu26.04" && "${SKU}" == "VR200" &&
+          "${TARGET_NODE_TYPE:-azure_vm_regular}" == azure_vm_* ]]; then
+        nct_metadata=$(get_component_config "nvidia_container_toolkit")
+        NCT_VERSION=$(jq -r '.version' <<< "$nct_metadata")
+        apt-get install -y \
+            nvidia-container-toolkit=${NCT_VERSION} \
+            nvidia-container-toolkit-base=${NCT_VERSION} \
+            libnvidia-container-tools=${NCT_VERSION} \
+            libnvidia-container1=${NCT_VERSION}
+    else
+        apt-get install -y nvidia-container-toolkit
+    fi
+    apt-mark hold \
+        nvidia-container-toolkit \
+        libnvidia-container-tools \
+        libnvidia-container1
 
     # Remove unwanted repos
     rm -f /etc/apt/sources.list.d/nvidia*

@@ -1065,6 +1065,11 @@
         },
         "ubuntu26.04": {
             "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "1:4.7.0-1"
+                    }
+                },
                 "version": "1:4.6.1-1"
             },        
             "x86_64": {
@@ -1118,6 +1123,15 @@
         }
     },
     "moby": {
+        "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "29.7.2"
+                    }
+                }
+            }
+        },
         "azurelinux3.0": {
             "x86_64": {
                 "version": "25.0.3-11",
@@ -1130,6 +1144,17 @@
             },
             "x86_64":{
                 "version": "29.1.4-ubuntu24.04u1"
+            }
+        }
+    },
+    "nvidia_container_toolkit": {
+        "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "1.19.1-1"
+                    }
+                }
             }
         }
     },
