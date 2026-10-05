@@ -57,6 +57,14 @@
         },
         "ubuntu26.04": {
             "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "3.3.1",
+                        "package_version": "3.3.1-057000",
+                        "source": "private",
+                        "repo_file": "doca-host_3.3.1-057000-26.01-ubuntu2604_arm64.deb"
+                    }
+                },
                 "version": "3.5.0",
                 "sha256": "a751efa58b7d42dfb86d52d8e07cbd3b96f5aee42db7809d62878adb4da65589",
                 "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.5.0/host/doca-host_3.5.0-082000-26.07-ubuntu2604_arm64.deb"
@@ -460,6 +468,19 @@
         },
         "ubuntu26.04": {
             "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "driver": {
+                            "version": "620.47",
+                            "major_version": "620",
+                            "source": "private",
+                            "repo_file": "nvidia-driver-local-repo-ubuntu2604-620.47_1.0-1_arm64.deb"
+                        },
+                        "imex": {
+                            "version": "2.0.0.rel35-1"
+                        }
+                    }
+                },
                 "driver": {
                     "version": "610.57.04",
                     "major_version": "610"
@@ -630,6 +651,24 @@
             }
         },
         "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "driver": {
+                            "version": "13.5",
+                            "package_version": "13.5.0-1",
+                            "distribution": "ubuntu2604",
+                            "source": "private",
+                            "repo_file": "cuda-repo-ubuntu2604-13-5-local_13.5.0-1_arm64.deb"
+                        },
+                        "samples": {
+                            "version": "13.4",
+                            "sha256": "1206bf1f1bc1c4176af17826a7c72ac94c4caf0a4fed7b61379f0041965ed707",
+                            "architectures": "100;110"
+                        }
+                    }
+                }
+            },
             "common": {
                 "driver": {
                     "version": "13.3",
@@ -947,6 +986,34 @@
                     "commit": "master"
                 }
             }
+        },
+        "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "2.31.2gr100+0.8.3-1+cuda13.5",
+                        "source": "private",
+                        "runtime_file": "libnccl2_2.31.2gr100+0.8.3-1+cuda13.5_arm64.deb",
+                        "dev_file": "libnccl-dev_2.31.2gr100+0.8.3-1+cuda13.5_arm64.deb",
+                        "rdmasharpplugins": {
+                            "commit": "master"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "nvshmem": {
+        "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "3.8.0",
+                        "source": "private",
+                        "archive_file": "libnvshmem_cuda13-linux-sbsa-3.8.0.tar.gz"
+                    }
+                }
+            }
         }
     },
     "nvbandwidth": {
@@ -962,6 +1029,17 @@
                 },
                 "version": "0.9",
                 "url": "https://github.com/NVIDIA/nvbandwidth"
+            }
+        },
+        "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "0.10_v2",
+                        "source": "private",
+                        "binary_file": "nvbandwidth_main_0.10_MPI"
+                    }
+                }
             }
         }
     },
