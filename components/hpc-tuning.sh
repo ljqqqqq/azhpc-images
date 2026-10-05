@@ -67,12 +67,23 @@ if [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $DIS
     sudo systemctl daemon-reexec
 fi
 
-# Enable reclaim mode
-echo "vm.zone_reclaim_mode = 1" >> /etc/sysctl.conf
+# Enable reclaim mode, except on VR200 where it should remain disabled.
+zone_reclaim_mode=1
+if [[ "${SKU:-}" == "VR200" || "${REQUESTED_SKU:-}" == "VR200" || "${GPU_SKU:-}" == "VR200" ]]; then
+    zone_reclaim_mode=0
+fi
+echo "vm.zone_reclaim_mode = ${zone_reclaim_mode}" >> /etc/sysctl.conf
 echo "net.ipv4.neigh.default.gc_thresh1 = 4096" >> /etc/sysctl.conf
 echo "net.ipv4.neigh.default.gc_thresh2 = 8192" >> /etc/sysctl.conf
 echo "net.ipv4.neigh.default.gc_thresh3 = 16384" >> /etc/sysctl.conf
 echo "sunrpc.tcp_max_slot_table_entries = 128" >> /etc/sysctl.conf
+
+# Prefer IPv4-mapped addresses when both IPv4 and IPv6 are available.
+if grep -Eq '^[[:space:]#]*precedence[[:space:]]+::ffff:0:0/96([[:space:]]|$)' /etc/gai.conf; then
+    sed -i -E 's|^[[:space:]#]*precedence[[:space:]]+::ffff:0:0/96([[:space:]]+[0-9]+)?.*|precedence ::ffff:0:0/96  100|' /etc/gai.conf
+else
+    echo "precedence ::ffff:0:0/96  100" >> /etc/gai.conf
+fi
 
 ## Systemd service for starting sunrpc and adding setting parameters
 cat <<EOF >/usr/sbin/sunrpc_tcp_settings.sh
