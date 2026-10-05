@@ -135,7 +135,7 @@ EOF
         fi
     fi
 
-    echo 'blacklist nouveau' >> /etc/modprobe.d/blacklist.conf
+    echo -e 'blacklist nouveau\noptions nouveau modeset=0' >> /etc/modprobe.d/blacklist.conf
     update-grub
 }
 

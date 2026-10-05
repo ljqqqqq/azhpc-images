@@ -7,6 +7,7 @@ source ${UTILS_DIR}/utilities.sh
 nccl_metadata=$(get_component_config "nccl")
 NCCL_VERSION=$(jq -r '.version' <<< $nccl_metadata)
 NCCL_RDMA_SHARP_COMMIT=$(jq -r '.rdmasharpplugins.commit' <<< $nccl_metadata)
+NCCL_SOURCE=$(jq -r '.source // "public"' <<< $nccl_metadata)
 
 cuda_metadata=$(get_component_config "cuda")
 CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
@@ -31,10 +32,17 @@ fi
 
 pushd /tmp
 if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-    apt-get install -y libnccl2 libnccl-dev
+    if [[ "$NCCL_SOURCE" == "private" ]]; then
+        NCCL_RUNTIME_FILE="libnccl2_${NCCL_VERSION}_${ARCHITECTURE_DISTRO}.deb"
+        NCCL_DEV_FILE="libnccl-dev_${NCCL_VERSION}_${ARCHITECTURE_DISTRO}.deb"
+        apt install -y \
+            "$TOP_DIR/internal_bits/$NCCL_RUNTIME_FILE" \
+            "$TOP_DIR/internal_bits/$NCCL_DEV_FILE"
+    else
+        apt-get install -y libnccl2 libnccl-dev
+    fi
     apt-mark hold libnccl2
     apt-mark hold libnccl-dev
-    NCCL_VERSION=$(dpkg-query -W -f='${Version}' libnccl2 | sed 's/+cuda.*//')
 else
     wget ${NCCL_DOWNLOAD_URL}
     tar -xvf ${TARBALL}
@@ -119,7 +127,11 @@ mv nccl-tests /opt/.
 module unload mpi/hpcx
 popd
 
-write_component_version "NCCL" ${NCCL_VERSION}
+if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
+    write_component_version "NCCL" "$(dpkg-query -W -f='${Version}' libnccl2 | sed 's/+cuda.*//')"
+else
+    write_component_version "NCCL" "$NCCL_VERSION"
+fi
 
 # Remove installation files
 rm -rf /tmp/${TARBALL}
