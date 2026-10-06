@@ -18,8 +18,8 @@ pushd /tmp
 mkdir rdma-core && tar -xvf $TARBALL --strip-components=1 -C rdma-core 
 
 pushd rdma-core
-bash build.sh
-cp build/bin/rdma_rename /usr/sbin/rdma_rename_$RDMA_CORE_VERSION
+EXTRA_CMAKE_FLAGS="-DNO_MAN_PAGES=1 -DNO_PYVERBS=1" bash build.sh
+install -m 0755 build/bin/rdma_rename /usr/sbin/rdma_rename_$RDMA_CORE_VERSION
 popd
 rm -rf rdma-core
 popd
@@ -30,10 +30,40 @@ popd
 
 cat <<EOF >/usr/sbin/azure_persistent_rdma_naming.sh
 #!/bin/bash
+set -euo pipefail
 
 rdma_rename=/usr/sbin/rdma_rename_${RDMA_CORE_VERSION}
 
-mapfile -t all_devices < <(ibdev2netdev -v | sort -n | awk '{print \$2}')
+for command_name in ibdev2netdev ibv_devinfo; do
+	command -v "\$command_name" >/dev/null
+done
+
+mapfile -t all_devices < <(
+	ibdev2netdev -v | sort -V | awk '{print \$2}' | awk 'NF' | awk '!seen[\$0]++'
+)
+
+is_mlx5_device() {
+	local device=\$1
+	local driver
+	driver=\$(basename "\$(readlink -f "/sys/class/infiniband/\${device}/device/driver")")
+	[[ "\$driver" == "mlx5_core" ]]
+}
+
+needs_renaming() {
+	local device
+	for device in "\${all_devices[@]}"; do
+		is_mlx5_device "\$device" || continue
+		[[ "\$device" =~ ^mlx5_(ib|an)[0-9]+\$ ]] || return 0
+	done
+	return 1
+}
+
+if [[ "\${1:-}" == "--needs-renaming" ]]; then
+	if needs_renaming; then
+		exit 0
+	fi
+	exit 1
+fi
 
 next_index() {
 	local prefix=\$1
@@ -54,10 +84,9 @@ an_index=\$(next_index mlx5_an)
 ib_index=\$(next_index mlx5_ib)
 
 for old_device in "\${all_devices[@]}"; do
+	is_mlx5_device "\$old_device" || continue
 
-	case "\$old_device" in
-		mlx5_ib*|mlx5_an*) continue ;;
-	esac
+	[[ "\$old_device" =~ ^mlx5_(ib|an)[0-9]+\$ ]] && continue
 
 	link_layer=\$(ibv_devinfo -d \$old_device | sed -n 's/^[\ \t]*link_layer:[\ \t]*\([a-zA-Z]*\)\$/\1/p')
 	
@@ -73,7 +102,8 @@ for old_device in "\${all_devices[@]}"; do
 		
 	else
 	
-		echo "Unknown device type for \$old_device."
+		echo "Unknown link layer '\$link_layer' for \$old_device." >&2
+		exit 1
 		
 	fi
 	
@@ -84,11 +114,12 @@ chmod 755 /usr/sbin/azure_persistent_rdma_naming.sh
 cat <<EOF >/etc/systemd/system/azure_persistent_rdma_naming.service
 [Unit]
 Description=Azure persistent RDMA naming
-After=network.target systemd-udev-settle.service openibd.service
-Wants=systemd-udev-settle.service
+After=network.target rdma-hw.target
+Wants=rdma-hw.target
 
 [Service]
 Type=oneshot
+ExecCondition=/usr/sbin/azure_persistent_rdma_naming.sh --needs-renaming
 ExecStart=/usr/sbin/azure_persistent_rdma_naming.sh
 StandardOutput=journal
 

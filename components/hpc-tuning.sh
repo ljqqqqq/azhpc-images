@@ -68,11 +68,7 @@ if [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $DIS
 fi
 
 # Enable reclaim mode, except on VR200 where it should remain disabled.
-zone_reclaim_mode=1
-if [[ "${SKU:-}" == "VR200" || "${REQUESTED_SKU:-}" == "VR200" || "${GPU_SKU:-}" == "VR200" ]]; then
-    zone_reclaim_mode=0
-fi
-echo "vm.zone_reclaim_mode = ${zone_reclaim_mode}" >> /etc/sysctl.conf
+echo "vm.zone_reclaim_mode = 1" >> /etc/sysctl.conf
 echo "net.ipv4.neigh.default.gc_thresh1 = 4096" >> /etc/sysctl.conf
 echo "net.ipv4.neigh.default.gc_thresh2 = 8192" >> /etc/sysctl.conf
 echo "net.ipv4.neigh.default.gc_thresh3 = 16384" >> /etc/sysctl.conf

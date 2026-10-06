@@ -1228,6 +1228,16 @@
         }
     },
     "rdma_core": {
+        "ubuntu26.04": {
+            "aarch64": {
+                "azure_vm_regular": {
+                    "nvidia_vr200": {
+                        "version": "56.1",
+                        "sha256": "0ebac5735bc38cafeba28a3124566b56606f11a8462c794411858efa7b407be0"
+                    }
+                }
+            }
+        },
         "ubuntu24.04": {
             "aarch64": {
                 "version": "56.1",
