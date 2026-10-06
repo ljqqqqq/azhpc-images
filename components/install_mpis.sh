@@ -34,6 +34,13 @@ tar -xvf ${TARBALL}
 
 mv ${HPCX_FOLDER} ${INSTALL_PREFIX}
 HPCX_PATH=${INSTALL_PREFIX}/${HPCX_FOLDER}
+if [[ "$DISTRIBUTION" == "ubuntu26.04" &&
+      "$SKU" == "VR200" &&
+      "${TARGET_NODE_TYPE:-azure_vm_regular}" == azure_vm_* ]]; then
+    grep -q "^HPC-X v${HPCX_VERSION}$" "${HPCX_PATH}/VERSION"
+    grep -q 'ucx-.* 1\.22\.0 ' "${HPCX_PATH}/VERSION"
+    grep -q 'ompi5-.*gitclone' "${HPCX_PATH}/VERSION"
+fi
 # Fix relocated HPC-X .la/.pc metadata before rebuilds consume the bundled UCX, HCOLL, and SHARP trees.
 HPCX_DIR=${HPCX_PATH} ${HPCX_PATH}/utils/hpcx_fix_ladir.sh
 HCOLL_PATH=${HPCX_PATH}/hcoll
@@ -138,28 +145,32 @@ fi
 # hpcx_rebuild.sh installs fresh Open MPI and, on AMD, UCX metadata under this tree; fix those generated .la/.pc files too.
 HPCX_DIR=${HPCX_PATH} ${HPCX_PATH}/utils/hpcx_fix_ladir.sh
 
-cat > /etc/ld.so.conf.d/hpcx-sharp.conf <<EOF
+if [[ "$DISTRIBUTION" != "ubuntu26.04" ||
+      "$SKU" != "VR200" ||
+      "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ]]; then
+    cat > /etc/ld.so.conf.d/hpcx-sharp.conf <<EOF
 ${SHARP_PATH}/lib
 EOF
-cat > /etc/ld.so.conf.d/hpcx-ucx.conf <<EOF
+    cat > /etc/ld.so.conf.d/hpcx-ucx.conf <<EOF
 ${UCX_PATH}/lib
 EOF
-ldconfig
+    ldconfig
 
-# Make HPC-X component metadata visible to pkg-config even when mpi/hpcx is not loaded.
-# The HPC-X module still prepends these paths to PKG_CONFIG_PATH, but /usr/local
-# pkgconfig symlinks let module-free builds resolve the same HCOLL, SHARP, and UCX.
-HPCX_SYSTEM_PKGCONFIG_DIRS=(/usr/local/lib/pkgconfig)
-if [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $DISTRIBUTION == rhel* ]] || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    HPCX_SYSTEM_PKGCONFIG_DIRS+=(/usr/local/lib64/pkgconfig)
-fi
-for pkgconfig_dir in "${HPCX_SYSTEM_PKGCONFIG_DIRS[@]}"; do
-    mkdir -p "${pkgconfig_dir}"
-    for pc_file in ${HCOLL_PATH}/lib/pkgconfig/*.pc ${SHARP_PATH}/lib/pkgconfig/*.pc ${UCX_PATH}/lib/pkgconfig/*.pc; do
-        [[ -f "${pc_file}" ]] || continue
-        ln -sf "${pc_file}" "${pkgconfig_dir}/$(basename "${pc_file}")"
+    # Make HPC-X component metadata visible to pkg-config even when mpi/hpcx is not loaded.
+    # The HPC-X module still prepends these paths to PKG_CONFIG_PATH, but /usr/local
+    # pkgconfig symlinks let module-free builds resolve the same HCOLL, SHARP, and UCX.
+    HPCX_SYSTEM_PKGCONFIG_DIRS=(/usr/local/lib/pkgconfig)
+    if [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $DISTRIBUTION == rhel* ]] || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
+        HPCX_SYSTEM_PKGCONFIG_DIRS+=(/usr/local/lib64/pkgconfig)
+    fi
+    for pkgconfig_dir in "${HPCX_SYSTEM_PKGCONFIG_DIRS[@]}"; do
+        mkdir -p "${pkgconfig_dir}"
+        for pc_file in ${HCOLL_PATH}/lib/pkgconfig/*.pc ${SHARP_PATH}/lib/pkgconfig/*.pc ${UCX_PATH}/lib/pkgconfig/*.pc; do
+            [[ -f "${pc_file}" ]] || continue
+            ln -sf "${pc_file}" "${pkgconfig_dir}/$(basename "${pc_file}")"
+        done
     done
-done
+fi
 
 if [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $DISTRIBUTION == rhel* ]] || [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     # exclude ucx from updates

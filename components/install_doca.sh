@@ -200,7 +200,11 @@ Pin-Priority: -1
 PIN
 
     apt-get update
-    install_hpcx_doca_ofed_deps_apt_marker
+    if [[ "$DISTRIBUTION" != "ubuntu26.04" ||
+          "$SKU" != "VR200" ||
+          "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ]]; then
+        install_hpcx_doca_ofed_deps_apt_marker
+    fi
     apt-get -y install doca-ofed
     check_dkms_status mlnx-ofed-kernel iser isert srp
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then

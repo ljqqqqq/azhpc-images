@@ -30,6 +30,7 @@ if [[ "$NVBANDWIDTH_SOURCE" == "private" ]]; then
     install -m 0755 \
         "$TOP_DIR/internal_bits/$NVBANDWIDTH_BINARY_FILE" \
         "$dest_dir/$NVBANDWIDTH_BINARY_FILE"
+    ln -sfn "$dest_dir/$NVBANDWIDTH_BINARY_FILE" "$dest_dir/nvbandwidth"
 else
     # Clone the repository and checkout the configured tag.
     git clone --branch v${NVBANDWIDTH_VERSION} ${NVBANDWIDTH_DOWNLOAD_URL}
