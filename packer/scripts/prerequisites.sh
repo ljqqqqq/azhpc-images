@@ -431,7 +431,17 @@ install_ubuntu_lts_kernel() {
                     echo "##[warning]linux-modules-extra-azure-${kernel_ver} is not in the archive; skipping (modules already in linux-modules-azure-${kernel_ver})."
                 fi
             fi
-
+            if [[ "${kernel_pkg}" == "linux-azure-64k" ]]; then
+                local packages_to_remove
+                packages_to_remove=$(dpkg -l | awk -v kernel_ver="${kernel_ver}" '
+                    $2 == "linux-azure" || $2 == "linux-image-azure" { print $2 }
+                    $2 ~ ("^linux-(azure|image-azure|modules-extra-azure)-" kernel_ver) && $2 !~ /64k/ { print $2 }
+                    $2 ~ ("^linux-(image|cloud-tools|headers|modules|tools)-" kernel_ver) && $2 !~ /64k/ { print $2 }
+                ' || true)
+                if [[ -n "${packages_to_remove}" ]]; then
+                    apt-get purge -y ${packages_to_remove}
+                fi
+            fi
             apt autoremove -y
             apt upgrade -y
 
