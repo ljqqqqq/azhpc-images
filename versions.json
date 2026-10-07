@@ -891,7 +891,12 @@
             }
         },
         "ubuntu26.04": {
-            "common": {
+            "x86_64":{
+                "version": "2.6-1",
+                "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
+                "distribution": "Ubuntu26_04"
+            },
+            "aarch64": {
                 "version": "2.6-1",
                 "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
                 "distribution": "Ubuntu26_04"
