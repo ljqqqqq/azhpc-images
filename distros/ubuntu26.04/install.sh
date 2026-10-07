@@ -105,17 +105,23 @@ $COMPONENT_DIR/install_waagent.sh
 # install persistent rdma naming
 $COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
 
-# Install AZNFS Mount Helper
-$COMPONENT_DIR/install_aznfs.sh
+if [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
 
-# install diagnostic script
-$COMPONENT_DIR/install_hpcdiag.sh
+    # Install AZNFS Mount Helper
+    $COMPONENT_DIR/install_aznfs.sh
 
-# install monitor tools
-$COMPONENT_DIR/install_monitoring_tools.sh
+    # install diagnostic script
+    $COMPONENT_DIR/install_hpcdiag.sh
 
-# install Azure/NHC Health Checks
-$COMPONENT_DIR/install_health_checks.sh "$GPU"
+    # install monitor tools
+    $COMPONENT_DIR/install_monitoring_tools.sh
+
+    # Azure NHC does not yet support NCv6
+    if [[ "$SKU" != "NCv6" ]]; then
+        # install Azure Node Health Checks
+        $COMPONENT_DIR/install_health_checks.sh "$GPU"
+    fi
+fi
 
 # write kernel and OS version metadata
 $COMPONENT_DIR/write_kernel_os_version.sh
