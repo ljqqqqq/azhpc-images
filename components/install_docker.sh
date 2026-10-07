@@ -14,13 +14,11 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         if [[ "${SKU}" == "VR200" && "${TARGET_NODE_TYPE:-azure_vm_regular}" == azure_vm_* ]]; then
             moby_metadata=$(get_component_config "moby")
             MOBY_VERSION=$(jq -r '.version' <<< "$moby_metadata")
-            moby_engine_candidate=$(apt-cache policy moby-engine | awk '/Candidate:/ {print $2}')
-            moby_cli_candidate=$(apt-cache policy moby-cli | awk '/Candidate:/ {print $2}')
-            [[ "$moby_engine_candidate" == "${MOBY_VERSION}-"* ]]
-            [[ "$moby_cli_candidate" == "${MOBY_VERSION}-"* ]]
+            moby_engine_version=$(apt-cache policy moby-engine | awk -v version="${MOBY_VERSION}-" '$1 ~ "^" version {print $1; exit}')
+            moby_cli_version=$(apt-cache policy moby-cli | awk -v version="${MOBY_VERSION}-" '$1 ~ "^" version {print $1; exit}')
             apt-get install -y \
-                "moby-engine=${moby_engine_candidate}" \
-                "moby-cli=${moby_cli_candidate}" \
+                "moby-engine=${moby_engine_version}" \
+                "moby-cli=${moby_cli_version}" \
                 moby-buildx
         else
             apt-get install -y docker.io docker-buildx
