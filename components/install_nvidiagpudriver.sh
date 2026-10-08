@@ -8,10 +8,10 @@ nvidia_metadata=$(get_component_config "nvidia")
 cuda_metadata=$(get_component_config "cuda")
 
 # Some configurations, such as MRC images and certain CRDs, require NVIDIA
-# driver packages from a local NVIDIA repository. Both the local repository
-# and the online CUDA repository provide driver packages, so prefer the local
-# repository for drivers while continuing to use the online repository for the
-# CUDA toolkit.
+# driver packages from a local NVIDIA repository. This repository contains
+# driver packages but does not contain the CUDA toolkit, so install drivers
+# from the local repository and continue to install the CUDA toolkit from the
+# online CUDA repository.
 function install_from_nvidia_local_repo {
     local repo_file=$1
     local repo_dir=${repo_file%%_*}
