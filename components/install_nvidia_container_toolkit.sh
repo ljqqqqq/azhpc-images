@@ -33,8 +33,11 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         libnvidia-container-tools \
         libnvidia-container1
 
-    # Remove unwanted repos
-    rm -f /etc/apt/sources.list.d/nvidia*
+    # Remove unwanted repos. Ubuntu 26.04 keeps the local NVIDIA driver repo
+    # for pinned VR200 driver packages installed earlier in the build.
+    if [[ $DISTRIBUTION != "ubuntu26.04" ]]; then
+        rm -f /etc/apt/sources.list.d/nvidia*
+    fi
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     dnf install --noplugins -y nvidia-container-toolkit-base nvidia-container-toolkit
     dnf install --noplugins -y nvidia-container-runtime
