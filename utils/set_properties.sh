@@ -27,12 +27,12 @@ export TARGET_NODE_TYPE="${TARGET_NODE_TYPE:-azure_vm_regular}"
 
 # Derive SKU_FAMILY from SKU so all downstream scripts use a single canonical
 # GPU-family identifier instead of repeated per-SKU string comparisons.
-# This captures GPU hardware capability (e.g. NVLink, CDMM) shared by both
-# Azure VM and baremetal GB200/GB300 deployments.
+# This captures GPU hardware capability (e.g. NVLink, CDMM) shared by
+# NVLink rackscale deployments.
 # Callers may set SKU_FAMILY directly in their environment to override.
 if [[ -z "${SKU_FAMILY:-}" ]]; then
     case "${SKU:-}" in
-        GB200|GB300) export SKU_FAMILY="gb-family" ;;
+        GB200|GB300|VR200) export SKU_FAMILY="nvlink_rackscale_family" ;;
         A100|H100|H200) export SKU_FAMILY="A100plus" ;;
         *)           export SKU_FAMILY="${SKU:-}" ;;
     esac

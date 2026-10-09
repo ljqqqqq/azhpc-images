@@ -67,6 +67,7 @@ function test_component {
         check_impi_2018) verify_impi_2018_installation;;
         check_gdrcopy) verify_gdrcopy_installation;;
         check_nvidia_driver) verify_nvidia_driver_installation;;
+        check_hyperv_devices) verify_hyperv_devices;;
         check_cuda) verify_cuda_installation;;
         check_nccl) verify_nccl_installation;;
         check_rocm) verify_rocm_installation;;
@@ -111,7 +112,7 @@ function verify_common_components {
     fi
 
     verify_pssh_installation;
-    if [[ "${SKU_FAMILY:-}" != "gb-family" ]]; then
+    if ! is_nvlink_rackscale_family; then
         # MVAPICH is intentionally not built on Ubuntu 26.04 (libfabric +
         # MVAPICH 4.1 don't compile on resolute's gcc 15; see install_mpis.sh).
         if [[ "$DISTRIBUTION" != "ubuntu26.04" && "$DISTRIBUTION" != "ubuntu26.04-aks" ]]; then
@@ -235,8 +236,7 @@ function set_vm_properties {
     if [[ -z "${SKU_FAMILY:-}" ]]; then
         if ! set_sku_family_hook; then
             case "${VMSIZE}" in
-                standard_nd128is*_gb[2-3]00_v6) export SKU_FAMILY="gb-family" ;;
-                standard_nd128isr_vr200_v6) export SKU_FAMILY="vr200" ;;
+                standard_nd128is*_gb[2-3]00_v6|standard_nd128isr_vr200_v6|nd144isr_eth_gb200_metal_v6|nd144isr_eth_vr200_metal_v6) export SKU_FAMILY="nvlink_rackscale_family" ;;
                 standard_nc*_rtxpro6000bse_v6)  export SKU_FAMILY="ncv6" ;;
             esac
         fi

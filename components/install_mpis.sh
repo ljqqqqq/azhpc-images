@@ -215,7 +215,7 @@ ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix-${HPCX_VERSION} ${MPI_MODULE_FILES
 
 # Install MVAPICH
 # Skips:
-#   * GB-family nodes (ubuntu24.04 and azurelinux3.0) — MVAPICH is not
+#   * NVLink rackscale nodes (ubuntu24.04 and azurelinux3.0) — MVAPICH is not
 #     supported on those distribution/SKU-family combinations.
 #   * Ubuntu 26.04 — MVAPICH 4.1's bundled libfabric does not build with
 #     resolute's gcc 15 (the OPX provider's OPX_COMPILE_TIME_ASSERT macro
@@ -225,7 +225,7 @@ ln -s ${MPI_MODULE_FILES_DIRECTORY}/hpcx-pmix-${HPCX_VERSION} ${MPI_MODULE_FILES
 #     --enable-ucr=no) unblocks libfabric, but resolute's gcc 15 then
 #     hangs/OOMs on MVAPICH's collectives source. Skip until MVAPICH
 #     publishes a release that builds cleanly against gcc 15.
-if ! [[ ("${DISTRIBUTION}" == "ubuntu24.04" || "${DISTRIBUTION}" == "azurelinux3.0") && "${SKU_FAMILY}" == "gb-family" ]] && \
+if ! [[ ("${DISTRIBUTION}" == "ubuntu24.04" || "${DISTRIBUTION}" == "azurelinux3.0") && "${SKU_FAMILY}" == "nvlink_rackscale_family" ]] && \
    [[ "${DISTRIBUTION}" != "ubuntu26.04" ]]; then
     mvapich_metadata=$(get_component_config "mvapich")
     MVAPICH_VERSION=$(jq -r '.version' <<< $mvapich_metadata)

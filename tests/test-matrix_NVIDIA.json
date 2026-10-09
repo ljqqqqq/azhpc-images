@@ -43,7 +43,7 @@
                     "check_sunrpc_tcp_settings"
                 ]
             },
-            "gb-family":{
+            "nvlink_rackscale_family":{
                 "components": [
                     "check_nvidia_driver",
                     "check_gdrcopy",
@@ -70,7 +70,7 @@
                 "components": [],
                 "services": []
             },
-            "gb-family":{
+            "nvlink_rackscale_family":{
                 "components": [
                     "check_nvidia_driver",
                     "check_cuda",
@@ -107,7 +107,7 @@
                 "components": [],
                 "services": []
             },
-            "gb-family":{
+            "nvlink_rackscale_family":{
                 "components": [
                     "check_nvidia_driver",
                     "check_nvlink"
@@ -145,9 +145,10 @@
                     "check_azure_persistent_rdma_naming"
                 ]
             },
-            "gb-family":{
+            "nvlink_rackscale_family":{
                 "components": [
                     "check_nvidia_driver",
+                    "check_hyperv_devices",
                     "check_gdrcopy",
                     "check_cuda",
                     "check_nccl",
@@ -155,6 +156,7 @@
                     "check_dcgm",
                     "check_nvlink",
                     "check_nvbandwidth",
+                    "check_nvshmem",
                     "check_mpifileutils",
                     "check_nvloom"
                 ],
@@ -332,7 +334,7 @@
                     "check_azure_persistent_rdma_naming"
                 ]
             },
-            "gb-family": {
+            "nvlink_rackscale_family": {
                 "components": [
                     "check_nvidia_driver",
                     "check_cuda",

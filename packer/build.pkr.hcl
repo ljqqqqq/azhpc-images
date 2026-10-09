@@ -55,6 +55,23 @@ build {
     ]
   }
 
+  provisioner "shell" {
+    name            = "Collect pre-build baseline evidence"
+    script          = "scripts/collect_build_evidence.sh"
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    environment_vars = [
+      "IMAGE_EVIDENCE_PHASE=baseline",
+      "IMAGE_EVIDENCE_RUN_NAME=${local.image_version}",
+      "AZHPC_IMAGES_SSH_USERNAME=${local.ssh_username}",
+      "IMAGE_VERSION=${local.image_version}",
+      "TARGET_VM_SIZE=${local.target_vm_size}",
+      "BUILD_VM_SIZE=${local.build_vm_size}",
+      "GPU_SKU=${local.gpu_sku}",
+      "TARGET_NODE_TYPE=${local.target_node_type}",
+      "INTERNAL_BITS_BLOB_NAME=${var.internal_bits_blob_name}",
+    ]
+  }
+
   provisioner "shell-local" {
     name           = "(1P specific) add ip tags to public IP"
     except         = var.enable_first_party_specifics ? [] : ["azure-arm.hpc"]
@@ -151,6 +168,17 @@ build {
   provisioner "file" {
     source      = "${path.root}/../"
     destination = "/home/${local.ssh_username}/azhpc-images"
+  }
+
+  provisioner "shell" {
+    name            = "Collect staged build-input evidence"
+    script          = "scripts/collect_build_evidence.sh"
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    environment_vars = [
+      "IMAGE_EVIDENCE_PHASE=inputs",
+      "IMAGE_EVIDENCE_RUN_NAME=${local.image_version}",
+      "AZHPC_IMAGES_SSH_USERNAME=${local.ssh_username}",
+    ]
   }
 
   provisioner "shell-local" {
@@ -355,6 +383,55 @@ build {
     inline = [
       "/opt/azurehpc/test/azurehpc-health-checks/run-health-checks.sh -o /opt/azurehpc/test/azurehpc-health-checks/health.log -v",
       "cat /opt/azurehpc/test/azurehpc-health-checks/health.log | grep --ignore-case 'Health checks completed with exit code: 0.'",
+    ]
+  }
+
+  provisioner "shell" {
+    name            = "Collect post-build evidence"
+    script          = "scripts/collect_build_evidence.sh"
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    environment_vars = [
+      "IMAGE_EVIDENCE_PHASE=post-build",
+      "IMAGE_EVIDENCE_RUN_NAME=${local.image_version}",
+      "AZHPC_IMAGES_SSH_USERNAME=${local.ssh_username}",
+    ]
+  }
+
+  provisioner "shell" {
+    name            = "Archive build evidence"
+    script          = "scripts/collect_build_evidence.sh"
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    environment_vars = [
+      "IMAGE_EVIDENCE_PHASE=archive",
+      "IMAGE_EVIDENCE_RUN_NAME=${local.image_version}",
+      "AZHPC_IMAGES_SSH_USERNAME=${local.ssh_username}",
+    ]
+  }
+
+  provisioner "file" {
+    name        = "Download build evidence"
+    direction   = "download"
+    generated   = true
+    source      = "/tmp/build-evidence.tgz"
+    destination = "/tmp/image_manifests/build-evidence.tgz"
+  }
+
+  provisioner "file" {
+    name        = "Download build evidence checksum"
+    direction   = "download"
+    generated   = true
+    source      = "/tmp/build-evidence.tgz.sha256"
+    destination = "/tmp/image_manifests/build-evidence.tgz.sha256"
+  }
+
+  provisioner "shell" {
+    name            = "Remove exported build evidence from image"
+    script          = "scripts/collect_build_evidence.sh"
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    environment_vars = [
+      "IMAGE_EVIDENCE_PHASE=cleanup",
+      "IMAGE_EVIDENCE_RUN_NAME=${local.image_version}",
+      "AZHPC_IMAGES_SSH_USERNAME=${local.ssh_username}",
     ]
   }
 

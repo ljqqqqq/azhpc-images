@@ -39,6 +39,27 @@ function _is_ncv6_sku {
     [[ "${VMSIZE}" =~ ^($ncv6_sizes)$ ]]
 }
 
+function _is_vr200_sku {
+    local vm_size="${VMSIZE:-}"
+    vm_size="${vm_size,,}"
+
+    [[ "${SKU:-}" == "VR200" || "${vm_size}" == "standard_nd128isr_vr200_v6" || "${vm_size}" == "nd144isr_eth_vr200_metal_v6" ]]
+}
+
+function is_nvlink_rackscale_family {
+    local vm_size="${VMSIZE:-}"
+    vm_size="${vm_size,,}"
+
+    case "${SKU_FAMILY:-${SKU:-}}" in
+        nvlink_rackscale_family|GB200|GB300|VR200) return 0 ;;
+    esac
+
+    case "${vm_size}" in
+        standard_nd128is*_gb[2-3]00_v6|standard_nd128isr_vr200_v6|nd144isr_eth_gb200_metal_v6|nd144isr_eth_vr200_metal_v6) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # Whether the current SKU has NVLink.
 function has_nvlink {
     ! _is_ncv6_sku
@@ -99,6 +120,12 @@ function verify_ib_device_status {
 
     ibstatus | grep "LinkUp"
     check_exit_code "IB devices are active and LinkUp" "IB Link is DOWN"
+
+    ibv_devinfo
+    check_exit_code "IB device information" "Failed to query IB device information"
+
+    rdma link
+    check_exit_code "RDMA link information" "Failed to query RDMA links"
 
     if ! sku_uses_ipoib; then
         # Baremetal GB200/GB300: Verify IB devices are active and LinkUp
@@ -178,9 +205,33 @@ function verify_ompi_installation {
 }
 
 function verify_nvidia_driver_installation {
+    local expected_gpu_count gpu_count gpu_list
+
     # Verify NVIDIA Driver installation
     nvidia_driver_cuda_version=$(nvidia-smi --version | tail -n 1 | awk -F':' '{print $2}' | tr -d "[:space:]")
     check_exit_code "NVIDIA Driver ${VERSION_NVIDIA}" "Failed to run NVIDIA SMI"
+
+    gpu_list=$(nvidia-smi -L)
+    check_exit_code "NVIDIA GPU list" "Failed to list NVIDIA GPUs"
+    printf '%s\n' "${gpu_list}"
+
+    if is_nvlink_rackscale_family; then
+        expected_gpu_count=4
+    else
+        expected_gpu_count=8
+    fi
+    gpu_count=$(grep -c '^GPU ' <<< "${gpu_list}")
+    [[ "${gpu_count}" -eq "${expected_gpu_count}" ]]
+    check_exit_code "NVIDIA GPU count (${expected_gpu_count})" \
+        "Expected ${expected_gpu_count} NVIDIA GPUs, found ${gpu_count}"
+
+    nvidia-smi \
+        --query-gpu=index,pci.bus_id,uuid,memory.total,ecc.errors.uncorrected.volatile.total \
+        --format=csv
+    check_exit_code "NVIDIA GPU identity and ECC query" "Failed to query NVIDIA GPU identity/ECC data"
+
+    nvidia-smi -q -d ECC,PAGE_RETIREMENT,ROW_REMAPPER
+    check_exit_code "NVIDIA GPU health details" "Failed to query NVIDIA ECC/page-retirement/row-remapper data"
     
     # Verify if NVIDIA peer memory module is inserted on SKUs with IB
     # Any of the MRC bring up doesn't require nvidia_peermem
@@ -189,11 +240,44 @@ function verify_nvidia_driver_installation {
         check_exit_code "NVIDIA Peer memory module is inserted" "NVIDIA Peer memory module is not inserted!"
     fi
 
-    if [[ "${SKU_FAMILY:-}" == "gb-family" ]]; then
+    if is_nvlink_rackscale_family; then
         # Verify if NVIDIA driver CDMM mode is enabled
         cat /proc/driver/nvidia/params | grep -q  "CoherentGPUMemoryMode: \"driver\""
         check_exit_code "NVIDIA CDMM mode is enabled" "NVIDIA CDMM mode is not enabled!"
     fi
+}
+
+function verify_hyperv_devices {
+    if [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ]]; then
+        echo "[SKIP] : Hyper-V KVP validation only applies to Azure VM images"
+        return
+    fi
+
+    local kvp_package kvp_service expected_rule
+
+    ls -l /dev/vmbus /sys/bus/vmbus/devices /sys/class/ptp
+    check_exit_code "Hyper-V device paths" "Failed to list VMBus/PTP device paths"
+
+    test -e /dev/vmbus/hv_kvp
+    check_exit_code "Hyper-V KVP device" "/dev/vmbus/hv_kvp is missing"
+
+    if [[ "${DISTRIBUTION}" == ubuntu* ]]; then
+        kvp_package=linux-cloud-tools-common
+        kvp_service=hv-kvp-daemon.service
+        dpkg-query -W -f='${Status}\n' "${kvp_package}" | grep -qx 'install ok installed'
+    else
+        kvp_package=hypervkvpd
+        kvp_service=hypervkvpd.service
+        rpm -q "${kvp_package}" >/dev/null
+    fi
+    check_exit_code "Hyper-V KVP package ${kvp_package}" "${kvp_package} is not installed"
+
+    expected_rule="SUBSYSTEM==\"misc\", KERNEL==\"vmbus!hv_kvp\", TAG+=\"systemd\", ENV{SYSTEMD_WANTS}+=\"${kvp_service}\""
+    grep -Fxq "${expected_rule}" /etc/udev/rules.d/99-hyperv-kvp.rules
+    check_exit_code "Hyper-V KVP udev rule" "The KVP udev rule does not request ${kvp_service}"
+
+    systemctl is-active --quiet "${kvp_service}"
+    check_exit_code "Hyper-V KVP daemon ${kvp_service}" "${kvp_service} is not active"
 }
 
 function verify_cuda_installation {
@@ -214,7 +298,7 @@ function verify_cuda_installation {
     fi
 
     # Verify the compilation of CUDA samples
-    if [[ "${SKU_FAMILY:-}" == "vr200" ]]; then
+    if _is_vr200_sku; then
         /usr/local/cuda/samples/segmentationTreeThrust
         check_exit_code "CUDA segmentationTreeThrust sample" "Failed to run segmentationTreeThrust"
 
@@ -236,11 +320,6 @@ function verify_nccl_installation {
     fi
 
     module load mpi/hpcx
-
-    # Determine if this is a gb-family node by SKU_FAMILY (forward-compatible)
-    # or by VMSIZE pattern (backward-compatible for existing Azure SKUs).
-    local _is_gb_family=0
-    [[ "${SKU_FAMILY:-}" == "gb-family" ]] && _is_gb_family=1
 
     case ${VMSIZE} in
         standard_nc24rs_v3) mpirun -np 4 \
@@ -281,11 +360,10 @@ function verify_nccl_installation {
                 /opt/nccl-tests/build/all_reduce_perf -b1K -f2 -g1 -e 4G
                 check_exit_code "NCCL ${VERSION_NCCL}" "Failed to run NCCL all reduce perf"
                 ;;
-        standard_nd128isr_ndr_gb200_v6|standard_nd128isr_gb300_v6) _is_gb_family=1;;
         *) ;;
     esac
 
-    if [[ "$_is_gb_family" == "1" ]]; then
+    if is_nvlink_rackscale_family; then
         mpirun -np 4 \
             --allow-run-as-root \
             --map-by ppr:4:node \
@@ -549,12 +627,15 @@ function verify_dcgm_installation {
     # Check if the NVIDIA DCGM service is active
     systemctl is-active --quiet nvidia-dcgm
     check_exit_code "NVIDIA DCGM service is active" "NVIDIA DCGM service is inactive/dead!"
+
+    dcgmi discovery -l
+    check_exit_code "NVIDIA DCGM GPU discovery" "DCGM failed to discover NVIDIA GPUs!"
 }
 
 function verify_sku_customization_service {
     # Check if the SKU customization service is active
     # Note: bash =~ is ERE, so use regex instead of glob patterns for matching
-    local valid_sizes="standard_nc.*ads_a100_v4|standard_nd96.*v4|standard_nd40rs_v2|standard_hb176.*v4|standard_nd96is.*_h[12]00_v5|standard_nd128is.*_gb[2-3]00_v6|standard_nc.*_rtxpro6000bse_v6"
+    local valid_sizes="standard_nc.*ads_a100_v4|standard_nd96.*v4|standard_nd40rs_v2|standard_hb176.*v4|standard_nd96is.*_h[12]00_v5|standard_nd128is.*_gb[2-3]00_v6|standard_nd128isr_vr200_v6|standard_nc.*_rtxpro6000bse_v6"
     if [[ "${VMSIZE}" =~ ^($valid_sizes)$ ]]
     then
         systemctl is-active --quiet sku-customizations
@@ -612,7 +693,7 @@ function verify_nvlink_setup {
     nvidia-smi nvlink --status
     check_exit_code "NVLINK Reports Healthy" "Unhealthy NVLINK setup!"
 
-    if [[ "${SKU_FAMILY:-}" == "gb-family" ]]; then
+    if is_nvlink_rackscale_family; then
         nvidia_smi_output=$(nvidia-smi -q | grep 'Fabric' -A 4)
         echo "$nvidia_smi_output"
 
