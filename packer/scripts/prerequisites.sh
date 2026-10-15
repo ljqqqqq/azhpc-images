@@ -379,15 +379,19 @@ install_ubuntu_lts_kernel() {
 
             local ubuntu_codename="noble"
 
-            # Install the versioned kernel meta-package
-            if [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
-                local pkgs=("linux-azure-${kernel_ver}")
-                if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
-                    pkgs+=("linux-modules-extra-azure-${kernel_ver}")
+            local pkg=("linux-azure-${kernel_ver}")
+
+            if [ "$USE_UBUNTU_PPA_REPO" == "True" ]; then
+                echo "##[section] PPA kernel repo is enabled, installing PPA kernel version: $UBUNTU_PPA_KERNEL_PATCH_VERSION"
+                sudo add-apt-repository -y "$UBUNTU_PPA_REPO_NAME"
+                if [[ "${NVLINK_RACKSCALE}" == "true" ]]; then
+                    pkg="linux-azure-64k"
                 fi
-                install_from_proposed_suite "${ubuntu_codename}" "${pkgs[@]}"
+                install_from_ppa_repo "${pkg}" "$UBUNTU_PPA_KERNEL_PATCH_VERSION" "$UBUNTU_PPA_REPO_NAME"
+            elif [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
+                install_from_proposed_suite "${ubuntu_codename}" "${pkg}"
             else
-                apt install -y linux-azure-${kernel_ver}
+                apt install -y "${pkg}"
                 if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
                     apt install -y linux-modules-extra-azure-${kernel_ver}
                 fi
@@ -400,6 +404,17 @@ install_ubuntu_lts_kernel() {
                 apt-get purge -y linux-azure-lts-24.04 || true
             fi
 
+            if [[ "${pkg}" == "linux-azure-64k" ]]; then
+                local packages_to_remove
+                packages_to_remove=$(dpkg -l | awk -v kernel_ver="${kernel_ver}" '
+                    $2 == "linux-azure" || $2 == "linux-image-azure" { print $2 }
+                    $2 ~ ("^linux-(azure|image-azure|modules-extra-azure)-" kernel_ver) && $2 !~ /64k/ { print $2 }
+                    $2 ~ ("^linux-(image|cloud-tools|headers|modules|tools)-" kernel_ver) && $2 !~ /64k/ { print $2 }
+                ' || true)
+                if [[ -n "${packages_to_remove}" ]]; then
+                    apt-get purge -y ${packages_to_remove}
+                fi
+            fi
 
             if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" == "7.0" ]]; then
                 configure_nvlink_rackscale_kernel
