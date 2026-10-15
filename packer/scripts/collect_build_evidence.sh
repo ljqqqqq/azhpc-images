@@ -124,7 +124,7 @@ collect_post_build() {
             "dpkg-query -W -f='\${Package}\\t\${Version}\\n' | LC_ALL=C sort"
         capture_shell "${run_dir}/build/package-holds.txt" 'apt-mark showhold | LC_ALL=C sort'
         capture_shell "${run_dir}/build/repositories.txt" \
-            "grep -RhsE '^[^#].*(deb |URIs:|Suites:)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | LC_ALL=C sort"
+            "grep -RHsE '^[[:space:]]*(deb(-src)?[[:space:]]|Types:|URIs:|Suites:|Components:|Architectures:|Signed-By:[[:space:]]+/)' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null"
     elif command -v rpm >/dev/null 2>&1; then
         capture_shell "${run_dir}/build/packages.tsv" \
             "rpm -qa --qf '%{NAME}\\t%{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\\n' | LC_ALL=C sort"
