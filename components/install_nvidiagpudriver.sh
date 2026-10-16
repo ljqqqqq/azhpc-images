@@ -12,9 +12,12 @@ cuda_metadata=$(get_component_config "cuda")
 # are selected independently from component metadata.
 function install_from_nvidia_local_repo {
     local repo_file=$1
+    local repo_sha256=$2
     local repo_dir=${repo_file%%_*}
+    local repo_path="$TOP_DIR/internal_bits/$repo_file"
 
-    apt install -y "$TOP_DIR/internal_bits/$repo_file"
+    verify_checksum "$repo_path" "$repo_sha256"
+    apt install -y "$repo_path"
     cp /var/$repo_dir/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
 
     cat <<EOF > /etc/apt/preferences.d/00-nvidia-prefer
@@ -27,9 +30,12 @@ EOF
 
 function install_from_cuda_local_repo {
     local repo_file=$1
+    local repo_sha256=$2
     local repo_dir=${repo_file%%_*}
+    local repo_path="$TOP_DIR/internal_bits/$repo_file"
 
-    apt install -y "$TOP_DIR/internal_bits/$repo_file"
+    verify_checksum "$repo_path" "$repo_sha256"
+    apt install -y "$repo_path"
     cp /var/$repo_dir/cuda-*-keyring.gpg /usr/share/keyrings/
     apt update
 }
@@ -73,7 +79,8 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     fi
     if [ "$CUDA_SOURCE" = "private" ]; then
         NVIDIA_CUDA_REPO_FILE=$(jq -r '.driver.repo_file' <<< $cuda_metadata)
-        install_from_cuda_local_repo "$NVIDIA_CUDA_REPO_FILE"
+        NVIDIA_CUDA_REPO_SHA256=$(jq -r '.driver.sha256' <<< $cuda_metadata)
+        install_from_cuda_local_repo "$NVIDIA_CUDA_REPO_FILE" "$NVIDIA_CUDA_REPO_SHA256"
     fi
     # Add NVIDIA CUDA APT repo (provides both driver and toolkit packages)
     wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/cuda-keyring_1.1-1_all.deb
@@ -83,7 +90,8 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     NVIDIA_DRIVER_SOURCE=$(jq -r '.driver.source' <<< $nvidia_metadata)
     if _is_mrc_network || [ "$NVIDIA_DRIVER_SOURCE" = "private" ]; then
         NVIDIA_GPU_DRIVER_REPO_FILE=$(jq -r '.driver.repo_file' <<< $nvidia_metadata)
-        install_from_nvidia_local_repo "$NVIDIA_GPU_DRIVER_REPO_FILE"
+        NVIDIA_GPU_DRIVER_REPO_SHA256=$(jq -r '.driver.sha256' <<< $nvidia_metadata)
+        install_from_nvidia_local_repo "$NVIDIA_GPU_DRIVER_REPO_FILE" "$NVIDIA_GPU_DRIVER_REPO_SHA256"
     fi
     if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
         apt-get install -y \

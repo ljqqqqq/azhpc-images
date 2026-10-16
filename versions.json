@@ -43,7 +43,8 @@
                 "azure_vm_akshost":{
                     "version": "3.1.0-091513-25.07-ubuntu2404",
                     "repo_file": "doca-host_3.1.0-091513-25.07-ubuntu2404_arm64.deb",
-                    "source": "private"
+                    "source": "private",
+                    "sha256": "02fb025a34c9b550d0412c7455c7981d9c03572d84da0314076af93157c8364a"
                 },
                 "baremetal_3p": {
                     "version": "3.3.0",
@@ -62,7 +63,8 @@
                         "version": "3.3.1",
                         "package_version": "3.3.1-057000",
                         "source": "private",
-                        "repo_file": "doca-host_3.3.1-057000-26.01-ubuntu2604_arm64.deb"
+                        "repo_file": "doca-host_3.3.1-057000-26.01-ubuntu2604_arm64.deb",
+                        "sha256": "8ce9f35ee6d03ec4cba02715600a7dfa2dda8101a27c3c4137fd17a6c22626e9"
                     }
                 },
                 "version": "3.5.0",
@@ -474,7 +476,8 @@
                             "version": "620.47-1ubuntu1",
                             "major_version": "620",
                             "source": "private",
-                            "repo_file": "nvidia-driver-local-repo-ubuntu2604-620.47_1.0-1_arm64.deb"
+                            "repo_file": "nvidia-driver-local-repo-ubuntu2604-620.47_1.0-1_arm64.deb",
+                            "sha256": "f0f1ad887d43534fc53312770b9b9086ddb97a083bc177262d6948d789d422d9"
                         },
                         "imex": {
                             "version": "2.0.0.rel35-1"
@@ -659,7 +662,8 @@
                             "package_version": "13.5.0-1",
                             "distribution": "ubuntu2604",
                             "source": "private",
-                            "repo_file": "cuda-repo-ubuntu2604-13-5-local_13.5.0-1_arm64.deb"
+                            "repo_file": "cuda-repo-ubuntu2604-13-5-local_13.5.0-1_arm64.deb",
+                            "sha256": "0d491e933ffc50a92cda86072fff34bb6890507c425fa76c67a5e7a9e87afa34"
                         },
                         "samples": {
                             "version": "13.4",
@@ -960,21 +964,27 @@
     "nccl": {
         "common": {
             "version": "2.31.2-1",
+            "sha256": "64adce28d88a13047abf87b9bfd2e2874888ebdef00a76b2961a53193fa651bc",
             "rdmasharpplugins": {
-                "commit": "master"
+                "branch": "master",
+                "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
             }
         },
         "azurelinux3.0": {
             "x86_64": {
                 "version": "2.30.4-1",
+                "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
                 "rdmasharpplugins": {
-                    "commit": "master"
+                    "branch": "master",
+                    "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
                 }
             },
             "aarch64": {
                 "version": "2.30.4-1",
+                "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
                 "rdmasharpplugins": {
-                    "commit": "v2.7.x"
+                    "branch": "v2.7.x",
+                    "commit": "b246b19c264fc1a673db098cc2535a0d1a0a10fd"
                 }
             }
         },
@@ -982,13 +992,17 @@
             "aarch64": {
                 "baremetal_3p": {
                     "version": "2.30.4-1",
+                    "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
                     "rdmasharpplugins": {
-                        "commit": "v2.7.x"
+                        "branch": "v2.7.x",
+                        "commit": "b246b19c264fc1a673db098cc2535a0d1a0a10fd"
                     }
                 },
                 "version": "2.30.4-1",
+                "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
                 "rdmasharpplugins": {
-                    "commit": "master"
+                    "branch": "master",
+                    "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
                 }
             }
         },
@@ -998,8 +1012,11 @@
                     "nvidia_vr200": {
                         "version": "2.31.2gr100+0.8.3-1+cuda13.5",
                         "source": "private",
+                        "runtime_sha256": "a4b74869bc3c44c633e51877b5c0f493e4694a6e1bf50d519053be1d0203b685",
+                        "dev_sha256": "def266f0d715a9aa68d0a518772edcffb6db998ae975b89fbd99a8af5a4cfabf",
                         "rdmasharpplugins": {
-                            "commit": "master"
+                            "branch": "master",
+                            "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
                         }
                     }
                 }
@@ -1012,7 +1029,8 @@
                 "azure_vm_regular": {
                     "nvidia_vr200": {
                         "version": "3.8.0",
-                        "source": "private"
+                        "source": "private",
+                        "sha256": "58f7b61d881a2e77729a110d47b5cdcd2bf137e49615cda0f8c9da3dbaffc2fd"
                     }
                 }
             }
@@ -1021,16 +1039,19 @@
     "nvbandwidth": {
         "common": {
             "version": "0.9",
-            "url": "https://github.com/NVIDIA/nvbandwidth"
+            "url": "https://github.com/NVIDIA/nvbandwidth",
+            "commit": "4a49bdae82d69e69330a88746cb12b449796ee8b"
         },
         "ubuntu24.04": {
             "aarch64": {
                 "baremetal_3p": {
                     "version": "0.8",
-                    "url": "https://github.com/NVIDIA/nvbandwidth"
+                    "url": "https://github.com/NVIDIA/nvbandwidth",
+                    "commit": "66746a3bef61c8c2e12ab34955310da70b9e38cb"
                 },
                 "version": "0.9",
-                "url": "https://github.com/NVIDIA/nvbandwidth"
+                "url": "https://github.com/NVIDIA/nvbandwidth",
+                "commit": "4a49bdae82d69e69330a88746cb12b449796ee8b"
             }
         },
         "ubuntu26.04": {
@@ -1039,7 +1060,8 @@
                     "nvidia_vr200": {
                         "version": "0.10_v2",
                         "source": "private",
-                        "binary_file": "nvbandwidth_main_0.10_MPI"
+                        "binary_file": "nvbandwidth_main_0.10_MPI",
+                        "sha256": "60e2a78206918618eb1a9696c5f6509ffb763315ef6ea706ac2ffae777c51fb6"
                     }
                 }
             }
@@ -1368,23 +1390,27 @@
         "azurelinux3.0": {
             "aarch64": {
                 "version": "1.2.0",
-                "url": "https://github.com/NVIDIA/nvloom.git"
+                "url": "https://github.com/NVIDIA/nvloom.git",
+                "commit": "bc0983828805d9ef2a912768fdae1465d581ef7c"
             }
         },
         "ubuntu24.04": {
             "aarch64": {
                 "baremetal_3p": {
                     "version": "1.2.0",
-                    "url": "https://github.com/NVIDIA/nvloom.git"
+                    "url": "https://github.com/NVIDIA/nvloom.git",
+                    "commit": "bc0983828805d9ef2a912768fdae1465d581ef7c"
                 },
                 "version": "2.0.0",
-                "url": "https://github.com/NVIDIA/nvloom.git"
+                "url": "https://github.com/NVIDIA/nvloom.git",
+                "commit": "7426efd0f6a9feb8cab70e9c5745c1a9eefaf352"
             }
         },
         "ubuntu26.04": {
             "aarch64": {
                 "version": "2.0.0",
-                "url": "https://github.com/NVIDIA/nvloom.git"
+                "url": "https://github.com/NVIDIA/nvloom.git",
+                "commit": "7426efd0f6a9feb8cab70e9c5745c1a9eefaf352"
             }
         }        
     },

@@ -10,6 +10,7 @@ nvbandwidth_metadata=$(get_component_config "nvbandwidth")
 NVBANDWIDTH_VERSION=$(jq -r '.version' <<< $nvbandwidth_metadata)
 NVBANDWIDTH_DOWNLOAD_URL=$(jq -r '.url' <<< $nvbandwidth_metadata)
 NVBANDWIDTH_SOURCE=$(jq -r '.source // "public"' <<< $nvbandwidth_metadata)
+NVBANDWIDTH_COMMIT=$(jq -r '.commit // empty' <<< $nvbandwidth_metadata)
 
 if [[ "$NVBANDWIDTH_SOURCE" != "private" ]]; then
     # Install source-build dependencies.
@@ -27,16 +28,19 @@ fi
 
 if [[ "$NVBANDWIDTH_SOURCE" == "private" ]]; then
     NVBANDWIDTH_BINARY_FILE=$(jq -r '.binary_file' <<< $nvbandwidth_metadata)
+    NVBANDWIDTH_BINARY_SHA256=$(jq -r '.sha256' <<< $nvbandwidth_metadata)
+    verify_checksum "$TOP_DIR/internal_bits/$NVBANDWIDTH_BINARY_FILE" "$NVBANDWIDTH_BINARY_SHA256"
     install -m 0755 \
         "$TOP_DIR/internal_bits/$NVBANDWIDTH_BINARY_FILE" \
         "$dest_dir/$NVBANDWIDTH_BINARY_FILE"
     ln -sfn "$dest_dir/$NVBANDWIDTH_BINARY_FILE" "$dest_dir/nvbandwidth"
 else
-    # Clone the repository and checkout the configured tag.
     git clone --branch v${NVBANDWIDTH_VERSION} ${NVBANDWIDTH_DOWNLOAD_URL}
 
     # Build and install the nvbandwidth tool.
     pushd nvbandwidth
+    git checkout ${NVBANDWIDTH_COMMIT}
+    write_repo_commit_version "NVBANDWIDTH" . "${NVBANDWIDTH_COMMIT}"
     source /etc/profile.d/modules.sh
     module load mpi/hpcx
     cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DMULTINODE=1 .

@@ -13,8 +13,10 @@ if [[ "$DISTRIBUTION" == "ubuntu26.04" &&
       "${TARGET_NODE_TYPE:-azure_vm_regular}" == azure_vm_* ]]; then
     nvshmem_metadata=$(get_component_config "nvshmem")
     NVSHMEM_VERSION=$(jq -r '.version' <<< "$nvshmem_metadata")
+    NVSHMEM_SHA256=$(jq -r '.sha256' <<< "$nvshmem_metadata")
     NVSHMEM_ARCHIVE_FILE="libnvshmem_cuda${CUDA_MAJOR_VERSION}-linux-sbsa-${NVSHMEM_VERSION}.tar.gz"
     NVSHMEM_ROOT=/opt/nvidia/nvshmem/$NVSHMEM_VERSION
+    verify_checksum "$TOP_DIR/internal_bits/$NVSHMEM_ARCHIVE_FILE" "$NVSHMEM_SHA256"
 
     rm -rf "$NVSHMEM_ROOT"
     install -d -m 0755 "$NVSHMEM_ROOT"

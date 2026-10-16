@@ -6,6 +6,8 @@ source ${UTILS_DIR}/utilities.sh
 # Set NCCL versions
 nccl_metadata=$(get_component_config "nccl")
 NCCL_VERSION=$(jq -r '.version' <<< $nccl_metadata)
+NCCL_SHA256=$(jq -r '.sha256 // empty' <<< $nccl_metadata)
+NCCL_RDMA_SHARP_BRANCH=$(jq -r '.rdmasharpplugins.branch' <<< $nccl_metadata)
 NCCL_RDMA_SHARP_COMMIT=$(jq -r '.rdmasharpplugins.commit' <<< $nccl_metadata)
 NCCL_SOURCE=$(jq -r '.source // "public"' <<< $nccl_metadata)
 
@@ -35,6 +37,10 @@ if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
     if [[ "$NCCL_SOURCE" == "private" ]]; then
         NCCL_RUNTIME_FILE="libnccl2_${NCCL_VERSION}_${ARCHITECTURE_DISTRO}.deb"
         NCCL_DEV_FILE="libnccl-dev_${NCCL_VERSION}_${ARCHITECTURE_DISTRO}.deb"
+        NCCL_RUNTIME_SHA256=$(jq -r '.runtime_sha256' <<< $nccl_metadata)
+        NCCL_DEV_SHA256=$(jq -r '.dev_sha256' <<< $nccl_metadata)
+        verify_checksum "$TOP_DIR/internal_bits/$NCCL_RUNTIME_FILE" "$NCCL_RUNTIME_SHA256"
+        verify_checksum "$TOP_DIR/internal_bits/$NCCL_DEV_FILE" "$NCCL_DEV_SHA256"
         apt install -y \
             "$TOP_DIR/internal_bits/$NCCL_RUNTIME_FILE" \
             "$TOP_DIR/internal_bits/$NCCL_DEV_FILE"
@@ -44,7 +50,7 @@ if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
     apt-mark hold libnccl2
     apt-mark hold libnccl-dev
 else
-    wget ${NCCL_DOWNLOAD_URL}
+    download_and_verify ${NCCL_DOWNLOAD_URL} ${NCCL_SHA256}
     tar -xvf ${TARBALL}
 
     pushd nccl-${NCCL_VERSION}
@@ -95,9 +101,10 @@ if [[ "$(sku_network_mode)" == "standard_ib" ]]; then
         exit 1
     fi
     mkdir -p /usr/local/nccl-rdma-sharp-plugins
-    git clone https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
+    git clone --branch ${NCCL_RDMA_SHARP_BRANCH} https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
     pushd nccl-rdma-sharp-plugins
     git checkout ${NCCL_RDMA_SHARP_COMMIT}
+    write_repo_commit_version "NCCL-RDMA_SHARP_PLUGIN" . "${NCCL_RDMA_SHARP_COMMIT}"
 
     if [[ "$DISTRIBUTION" == "azurelinux3.0" ]]; then
         libtoolize --verbose
@@ -121,6 +128,7 @@ source /etc/profile.d/modules.sh
 module load mpi/hpcx
 git clone https://github.com/NVIDIA/nccl-tests.git
 pushd nccl-tests
+write_repo_commit_version "NCCL_TESTS" .
 make MPI=1 MPI_HOME=${HPCX_MPI_DIR} CUDA_HOME=/usr/local/cuda
 popd
 mv nccl-tests /opt/.
