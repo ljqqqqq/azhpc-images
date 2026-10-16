@@ -404,14 +404,37 @@ install_ubuntu_lts_kernel() {
                 apt-get purge -y linux-azure-lts-24.04 || true
             fi
 
+            
             if [[ "${pkg}" == "linux-azure-64k" ]]; then
                 local packages_to_remove
-                packages_to_remove=$(dpkg -l | awk -v kernel_ver="${kernel_ver}" '
-                    $2 == "linux-azure" || $2 == "linux-image-azure" { print $2 }
-                    $2 ~ ("^linux-(azure|image-azure|modules-extra-azure)-" kernel_ver) && $2 !~ /64k/ { print $2 }
-                    $2 ~ ("^linux-(image|cloud-tools|headers|modules|tools)-" kernel_ver) && $2 !~ /64k/ { print $2 }
-                ' || true)
+
+                # Add more stringent checks for packages to remove, avoid accidentally purging critical 64K/shared packages like linux-azure-7.0-headers-7.0.0-3019
+                packages_to_remove=$(
+                    dpkg -l | awk -v kernel_ver="${kernel_ver}" '
+                        $1 != "ii" { next }
+
+                        $2 ~ /^linux-(azure|image-azure|headers-azure|tools-azure|cloud-tools-azure|modules-extra-azure)$/ {
+                            print $2
+                            next
+                        }
+
+                        $2 ~ /^linux-(image(-unsigned)?|cloud-tools|headers|modules(-extra)?|tools)-/ &&
+                        index($2, "-" kernel_ver) &&
+                        $2 ~ /-azure$/ {
+                            print $2
+                        }
+                    ' || true
+                )
+
                 if [[ -n "${packages_to_remove}" ]]; then
+                    echo "Packages selected for purge:"
+                    printf '  %s\n' ${packages_to_remove}
+
+                    if grep -Eq '64k|^linux-azure-[0-9]' <<< "${packages_to_remove}"; then
+                        echo "ERROR: purge list contains protected 64K/shared packages" >&2
+                        exit 1
+                    fi
+
                     apt-get purge -y ${packages_to_remove}
                 fi
             fi
