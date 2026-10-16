@@ -117,14 +117,19 @@ else
     OS_MAJOR_VERSION=$(sed -n 's/^VERSION_ID="\([0-9]\+\).*/\1/p' /etc/os-release)
     REPO_PATH=/etc/yum.repos.d/amlfs.repo
 
-    rpm --import https://packages.microsoft.com/keys/microsoft.asc
+    MICROSOFT_GPG_KEY=https://packages.microsoft.com/keys/microsoft.asc
+    if [ "${OS_MAJOR_VERSION}" -eq 10 ]; then
+        MICROSOFT_GPG_KEY=https://packages.microsoft.com/keys/microsoft-2025.asc
+    fi
+
+    rpm --import "${MICROSOFT_GPG_KEY}"
 
     echo -e "[amlfs]" > ${REPO_PATH}
     echo -e "name=Azure Lustre Packages" >> ${REPO_PATH}
     echo -e "baseurl=https://packages.microsoft.com/yumrepos/amlfs-el${OS_MAJOR_VERSION}" >> ${REPO_PATH}
     echo -e "enabled=1" >> ${REPO_PATH}
     echo -e "gpgcheck=1" >> ${REPO_PATH}
-    echo -e "gpgkey=https://packages.microsoft.com/keys/microsoft.asc" >> ${REPO_PATH}
+    echo -e "gpgkey=${MICROSOFT_GPG_KEY}" >> ${REPO_PATH}
 
     LUSTRE_PACKAGES=(
         "lustre-client-dkms-${LUSTRE_VERSION_UNDERSCORE}"
