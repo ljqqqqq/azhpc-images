@@ -16,15 +16,15 @@ NCCL_DOWNLOAD_URL=https://github.com/NVIDIA/nccl/archive/refs/tags/${TARBALL}
 
 # Install NCCL
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    apt install -y build-essential devscripts debhelper fakeroot patchelf
+    apt install -y build-essential devscripts debhelper fakeroot patch patchelf
     # Comment the installation of libibverbs-dev to avoid conflicts on builds for bare metal 1P nodes
     # For VM it has been installed via the install_utils.sh or install_doca.sh
     apt install -y zlib1g-dev # libibverbs-dev 
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    tdnf install -y rpm-build rpmdevtools autoconf automake git libtool patchelf
+    tdnf install -y rpm-build rpmdevtools autoconf automake git libtool patch patchelf
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
-    yum install -y rpm-build rpmdevtools patchelf
+    yum install -y rpm-build rpmdevtools patch patchelf
 fi
 
 pushd /tmp
@@ -32,6 +32,14 @@ wget ${NCCL_DOWNLOAD_URL}
 tar -xvf ${TARBALL}
 
 pushd nccl-${NCCL_VERSION}
+
+# Temporary low-overhead diagnostic for the NCCL proxy ops-pool unlink race.
+# Log only after a successful unlink and only for the proxy ops-pool object, so
+# the diagnostic does not delay the unlink or add noise for unrelated SHM.
+if [[ "${NCCL_VERSION}" == "2.30.4-1" ]]; then
+    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-2.30.4-1-shm-unlink-diag.patch"
+fi
+
 make -j $(( $(nproc) - 1 )) src.build
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     make pkg.debian.build
