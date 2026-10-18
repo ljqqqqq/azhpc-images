@@ -42,7 +42,9 @@ else
     # Build and install the nvbandwidth tool.
     pushd nvbandwidth
     git checkout ${NVBANDWIDTH_COMMIT}
-    write_repo_source_info "NVBANDWIDTH" . "${NVBANDWIDTH_COMMIT}" "${NVBANDWIDTH_REF}"
+    write_repo_source_info "NVBANDWIDTH" . \
+        --commit "${NVBANDWIDTH_COMMIT}" \
+        --ref "${NVBANDWIDTH_REF}"
     source /etc/profile.d/modules.sh
     module load mpi/hpcx
     cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DMULTINODE=1 .
