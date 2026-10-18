@@ -34,10 +34,15 @@ tar -xvf ${TARBALL}
 pushd nccl-${NCCL_VERSION}
 
 # Temporary low-overhead diagnostic for the NCCL proxy ops-pool unlink race.
-# Log only after a successful unlink and only for the proxy ops-pool object, so
-# the diagnostic does not delay the unlink or add noise for unrelated SHM.
-if [[ "${NCCL_VERSION}" == "2.30.4-1" ]]; then
-    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-2.30.4-1-shm-unlink-diag.patch"
+# NCCL 2.30 moved the Linux SHM implementation from shmutils.cc to linux.cc;
+# select by source layout so every NCCL version built by this script is patched.
+if [[ -f src/os/linux.cc ]]; then
+    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-unlink-diag-linux-os.patch"
+elif [[ -f src/misc/shmutils.cc ]]; then
+    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-unlink-diag-shmutils.patch"
+else
+    echo "Unable to locate the NCCL Linux shared-memory implementation" >&2
+    exit 1
 fi
 
 make -j $(( $(nproc) - 1 )) src.build

@@ -1,14 +1,20 @@
 diff --git a/src/os/linux.cc b/src/os/linux.cc
 --- a/src/os/linux.cc
 +++ b/src/os/linux.cc
-@@ -611,3 +611,6 @@
+@@ -8,3 +8,4 @@
+ #include "os.h"
+-
++#include "proxy.h"
++
+ #include "checks.h"
+@@ -611,3 +612,6 @@
 +// Temporary diagnostic that only logs the proxy ops-pool shared-memory object.
 +static constexpr size_t ncclShmDiagTargetSize = sizeof(struct ncclProxyOpsPool);
 +
  void ncclOsShmHandleInit(ncclShmDescriptor shmDesc, char* shmPath, size_t shmSize, size_t realShmSize,
                           char* hptr, void* dptr, bool create,
                           struct ncclShmHandleInternal* handle) {
-@@ -691,6 +694,8 @@ ncclResult_t ncclOsShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize,
+@@ -691,6 +695,8 @@ ncclResult_t ncclOsShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize,
      if (remref == 0) {
        if (unlink(shmPath) != 0) {
          INFO(NCCL_ALLOC, "unlink shared memory %s failed, error: %s (%d)", shmPath, strerror(errno), errno);
@@ -17,7 +23,7 @@ diff --git a/src/os/linux.cc b/src/os/linux.cc
        }
      }
    }
-@@ -732,6 +737,8 @@ ncclResult_t ncclOsShmClose(struct ncclShmHandleInternal* handle) {
+@@ -732,6 +738,8 @@ ncclResult_t ncclOsShmClose(struct ncclShmHandleInternal* handle) {
          if (unlink(handle->shmPath) != 0) {
            WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
            ret = ncclSystemError;
@@ -26,7 +32,7 @@ diff --git a/src/os/linux.cc b/src/os/linux.cc
          }
        }
        free(handle->shmPath);
-@@ -756,6 +763,8 @@ ncclResult_t ncclOsShmUnlink(struct ncclShmHandleInternal* handle) {
+@@ -756,6 +764,8 @@ ncclResult_t ncclOsShmUnlink(struct ncclShmHandleInternal* handle) {
        if (unlink(handle->shmPath) != 0) {
          WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
          ret = ncclSystemError;

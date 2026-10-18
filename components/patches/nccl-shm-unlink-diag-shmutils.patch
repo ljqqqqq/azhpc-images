@@ -1,0 +1,37 @@
+diff --git a/src/misc/shmutils.cc b/src/misc/shmutils.cc
+--- a/src/misc/shmutils.cc
++++ b/src/misc/shmutils.cc
+@@ -28,3 +28,5 @@
+ };
+-
++// Temporary diagnostic that only logs the proxy ops-pool shared-memory object.
++static constexpr size_t ncclShmDiagTargetSize = sizeof(struct ncclProxyOpsPool);
++
+ static void shmHandleInit(int fd, char* shmPath, size_t shmSize, size_t realShmSize, char* hptr, void* dptr, bool create, struct shmHandleInternal* handle) {
+@@ -108,6 +111,8 @@ ncclResult_t ncclShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize, void
+       /* the last peer has completed attachment, it should unlink the shm mem file. */
+       if (unlink(shmPath) != 0) {
+         INFO(NCCL_ALLOC, "unlink shared memory %s failed, error: %s (%d)", shmPath, strerror(errno), errno);
++      } else if (shmSize == ncclShmDiagTargetSize) {
++        WARN("NCCL_SHM_DIAG AUTO_UNLINK path=%s size=%zu remref=%d", shmPath, shmSize, remref);
+       }
+     }
+   }
+@@ -150,6 +155,8 @@ ncclResult_t ncclShmClose(ncclShmHandle_t handle) {
+         if (unlink(tmphandle->shmPath) != 0) {
+           WARN("unlink shared memory %s failed, error: %s (%d)", tmphandle->shmPath, strerror(errno), errno);
+           ret = ncclSystemError;
++        } else if (tmphandle->shmSize == ncclShmDiagTargetSize) {
++          WARN("NCCL_SHM_DIAG CLOSE_UNLINK path=%s size=%zu refcount=%d", tmphandle->shmPath, tmphandle->shmSize, *tmphandle->refcount);
+         }
+       }
+       free(tmphandle->shmPath);
+@@ -175,6 +182,8 @@ ncclResult_t ncclShmUnlink(ncclShmHandle_t handle) {
+       if (unlink(tmphandle->shmPath) != 0) {
+         WARN("unlink shared memory %s failed, error: %s (%d)", tmphandle->shmPath, strerror(errno), errno);
+         ret = ncclSystemError;
++      } else if (tmphandle->shmSize == ncclShmDiagTargetSize) {
++        WARN("NCCL_SHM_DIAG EXPLICIT_UNLINK path=%s size=%zu refcount=%d", tmphandle->shmPath, tmphandle->shmSize, *tmphandle->refcount);
+       }
+       free(tmphandle->shmPath);
+       tmphandle->shmPath = NULL;
