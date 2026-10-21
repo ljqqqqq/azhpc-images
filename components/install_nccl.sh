@@ -33,7 +33,7 @@ tar -xvf ${TARBALL}
 
 pushd nccl-${NCCL_VERSION}
 
-# Temporary low-overhead diagnostic for the NCCL proxy ops-pool unlink race.
+# Temporary low-overhead lifecycle diagnostic for the NCCL proxy ops-pool race.
 # NCCL 2.30 moved the Linux SHM implementation from shmutils.cc to linux.cc;
 # select by source layout so every NCCL version built by this script is patched.
 if [[ -f src/os/linux.cc ]]; then
@@ -44,6 +44,7 @@ else
     echo "Unable to locate the NCCL Linux shared-memory implementation" >&2
     exit 1
 fi
+patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-init-exit-diag.patch"
 
 make -j $(( $(nproc) - 1 )) src.build
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then

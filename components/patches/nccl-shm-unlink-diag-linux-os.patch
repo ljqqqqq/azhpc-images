@@ -1,43 +1,60 @@
 diff --git a/src/os/linux.cc b/src/os/linux.cc
 --- a/src/os/linux.cc
 +++ b/src/os/linux.cc
-@@ -8,3 +8,4 @@
- #include "os.h"
--
-+#include "proxy.h"
-+
+@@ -10,2 +10,3 @@
  #include "checks.h"
-@@ -611,3 +612,6 @@
++#include "proxy.h"
+ #include "utils.h"
+@@ -609,3 +610,6 @@ ncclResult_t ncclOsNvmlOpen(ncclOsLibraryHandle* handle) {
+ #include <stdlib.h>
+-
++
 +// Temporary diagnostic that only logs the proxy ops-pool shared-memory object.
 +static constexpr size_t ncclShmDiagTargetSize = sizeof(struct ncclProxyOpsPool);
 +
  void ncclOsShmHandleInit(ncclShmDescriptor shmDesc, char* shmPath, size_t shmSize, size_t realShmSize,
-                          char* hptr, void* dptr, bool create,
-                          struct ncclShmHandleInternal* handle) {
-@@ -691,6 +695,8 @@ ncclResult_t ncclOsShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize,
+@@ -688,7 +692,18 @@ ncclResult_t ncclOsShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize,
+     *(int*)(hptr + shmSize) = refcount;
++    if (shmSize == ncclShmDiagTargetSize) {
++      WARN("NCCL_SHM_DIAG CREATE_OK path=%s size=%zu initial_refcount=%d", shmPath, shmSize, refcount);
++    }
+   } else {
+     int remref = ncclAtomicRefCountDecrement((int*)(hptr + shmSize));
++    if (shmSize == ncclShmDiagTargetSize) {
++      WARN("NCCL_SHM_DIAG ATTACH_OK path=%s size=%zu remref=%d", shmPath, shmSize, remref);
++    }
      if (remref == 0) {
-       if (unlink(shmPath) != 0) {
-         INFO(NCCL_ALLOC, "unlink shared memory %s failed, error: %s (%d)", shmPath, strerror(errno), errno);
-+      } else if (shmSize == ncclShmDiagTargetSize) {
-+        WARN("NCCL_SHM_DIAG AUTO_UNLINK path=%s size=%zu remref=%d", shmPath, shmSize, remref);
+-      if (unlink(shmPath) != 0) {
+-        INFO(NCCL_ALLOC, "unlink shared memory %s failed, error: %s (%d)", shmPath, strerror(errno), errno);
++      int unlinkResult = unlink(shmPath);
++      int unlinkErrno = unlinkResult == 0 ? 0 : errno;
++      if (shmSize == ncclShmDiagTargetSize) {
++        WARN("NCCL_SHM_DIAG UNLINK_RESULT source=AUTO path=%s size=%zu remref=%d rc=%d errno=%d", shmPath, shmSize, remref, unlinkResult, unlinkErrno);
++      }
++      if (unlinkResult != 0) {
++        INFO(NCCL_ALLOC, "unlink shared memory %s failed, error: %s (%d)", shmPath, strerror(unlinkErrno), unlinkErrno);
        }
-     }
-   }
-@@ -732,6 +738,8 @@ ncclResult_t ncclOsShmClose(struct ncclShmHandleInternal* handle) {
-         if (unlink(handle->shmPath) != 0) {
-           WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
+@@ -731,4 +746,9 @@ ncclResult_t ncclOsShmClose(struct ncclShmHandleInternal* handle) {
+       if (handle->shmPath != NULL && handle->refcount != NULL && *handle->refcount > 0) {
+-        if (unlink(handle->shmPath) != 0) {
+-          WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
++        int unlinkResult = unlink(handle->shmPath);
++        int unlinkErrno = unlinkResult == 0 ? 0 : errno;
++        if (handle->shmSize == ncclShmDiagTargetSize) {
++          WARN("NCCL_SHM_DIAG UNLINK_RESULT source=CLOSE path=%s size=%zu refcount=%d rc=%d errno=%d", handle->shmPath, handle->shmSize, *handle->refcount, unlinkResult, unlinkErrno);
++        }
++        if (unlinkResult != 0) {
++          WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(unlinkErrno), unlinkErrno);
            ret = ncclSystemError;
-+        } else if (handle->shmSize == ncclShmDiagTargetSize) {
-+          WARN("NCCL_SHM_DIAG CLOSE_UNLINK path=%s size=%zu refcount=%d", handle->shmPath, handle->shmSize, *handle->refcount);
-         }
-       }
-       free(handle->shmPath);
-@@ -756,6 +764,8 @@ ncclResult_t ncclOsShmUnlink(struct ncclShmHandleInternal* handle) {
-       if (unlink(handle->shmPath) != 0) {
-         WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
+@@ -755,4 +775,9 @@ ncclResult_t ncclOsShmUnlink(struct ncclShmHandleInternal* handle) {
+     if (handle->shmPath != NULL && handle->refcount != NULL && *handle->refcount > 0) {
+-      if (unlink(handle->shmPath) != 0) {
+-        WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
++      int unlinkResult = unlink(handle->shmPath);
++      int unlinkErrno = unlinkResult == 0 ? 0 : errno;
++      if (handle->shmSize == ncclShmDiagTargetSize) {
++        WARN("NCCL_SHM_DIAG UNLINK_RESULT source=EXPLICIT path=%s size=%zu refcount=%d rc=%d errno=%d", handle->shmPath, handle->shmSize, *handle->refcount, unlinkResult, unlinkErrno);
++      }
++      if (unlinkResult != 0) {
++        WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(unlinkErrno), unlinkErrno);
          ret = ncclSystemError;
-+      } else if (handle->shmSize == ncclShmDiagTargetSize) {
-+        WARN("NCCL_SHM_DIAG EXPLICIT_UNLINK path=%s size=%zu refcount=%d", handle->shmPath, handle->shmSize, *handle->refcount);
-       }
-       free(handle->shmPath);
-       handle->shmPath = NULL;
