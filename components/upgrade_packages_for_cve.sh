@@ -64,7 +64,7 @@ apt-get update
 # Fail before changing the image if an enabled repository cannot provide every
 # required standard-repository fix or would resolve the package to an ESM build.
 for package in "${INSTALLED_PACKAGES[@]}"; do
-    candidate_version=$(apt-cache policy "${package}" | awk '/Candidate:/ { print $2; exit }')
+    candidate_version=$(apt-cache policy "${package}" | awk '/Candidate:/ { print $2 }')
     minimum_version=${MINIMUM_FIXED_VERSIONS[${package}]}
 
     if [[ -z "${candidate_version}" || "${candidate_version}" == "(none)" ]]; then
