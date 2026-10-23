@@ -26,22 +26,15 @@ elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     # libnvidia-nscq packages that Provide/Obsolete the identically-named PMC
     # packages, often at a newer version than the Microsoft 1P-signed driver
     # installed from PMC.  The driver kmod and fabric manager versions must
-    # match exactly, so exclude the CUDA repo copies and let dnf resolve to
+    # match exactly, so exclude the CUDA repo copies and let tdnf resolve to
     # the PMC-sourced packages whose versions track the 1P-signed driver.
-    if [[ "$ARCHITECTURE" == "aarch64" ]]; then
-        CUDA_REPO_ID="cuda-azl3-sbsa"
-    else
-        CUDA_REPO_ID="cuda-azl3-x86_64"
-    fi
-    dnf config-manager --save \
-        --setopt="${CUDA_REPO_ID}.excludepkgs=nvidia-fabricmanager* nvidia-fabric-manager* libnvidia-nscq*" \
-        >/dev/null
+    echo "exclude=nvidia-fabricmanager* nvidia-fabric-manager* libnvidia-nscq*" >> /etc/yum.repos.d/cuda-azl3.repo
 
-    # Install from PMC after excluding the CUDA repo copies above.
+    # tdnf does not respect exclude= directive of repo config
     dnf install -y nvidia-fabric-manager \
                    nvidia-fabric-manager-devel \
                    libnvidia-nscq
-    NVIDIA_FABRICMANAGER_VERSION=$(sudo dnf list installed | grep -i nvidia-fabric-manager.x86_64 | sed 's/.*[[:space:]]\([0-9.]*-[0-9]*\)\..*/\1/')
+    NVIDIA_FABRICMANAGER_VERSION=$(sudo tdnf list installed | grep -i nvidia-fabric-manager.x86_64 | sed 's/.*[[:space:]]\([0-9.]*-[0-9]*\)\..*/\1/')
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
     nvidia_fabricmanager_metadata=$(jq -r '.fabricmanager' <<< $nvidia_metadata)
@@ -60,7 +53,7 @@ else
     FILENAME=$(basename $NVIDIA_FABRIC_MNGR_PKG)
     download_and_verify ${NVIDIA_FABRIC_MNGR_PKG} ${NVIDIA_FABRICMANAGER_SHA256}
     
-    dnf install -y ./${FILENAME}
+    yum install -y ./${FILENAME}
 
     # Prevent package from being updated after installation
     dnf_pin_packages "${PACKAGE_NAME}"

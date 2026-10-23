@@ -6,10 +6,9 @@ source ${UTILS_DIR}/utilities.sh
 doca_metadata=$(get_component_config "doca")
 DOCA_VERSION=$(jq -r '.version' <<< $doca_metadata)
 DOCA_SOURCE=$(jq -r '.source' <<< $doca_metadata)
-HPCX_DOCA_OFED_DEPS_MARKER=hpcx-provides-doca-ofed-deps
 
 if [[ "$DOCA_SOURCE" == "private" ]]; then
-    DOCA_FILE=$(jq -r '.repo_file' <<< $doca_metadata)
+    DOCA_FILE=$(jq -r '.file' <<< $doca_metadata)
     DOCA_FILE="$TOP_DIR/internal_bits/$DOCA_FILE"
 else
     DOCA_URL=$(jq -r '.url' <<< $doca_metadata)
@@ -18,65 +17,42 @@ else
     DOCA_FILE=$(basename ${DOCA_URL})
 fi
 
-configure_doca_dkms_patches() {
-    local dkms_module=$1
+configure_mlnx_ofa_kernel_dkms_dpll_patch() {
     local kernel_header=/usr/src/kernels/$(uname -r)/include/linux/dpll.h
-    local dkms_conf=/etc/dkms/${dkms_module}.conf
-    local patch_dir=/etc/dkms/${dkms_module}/patches
-
-    mkdir -p "${patch_dir}"
-    # V100's proprietary nvidia-peermem cannot use GPL-only exports.
-    if [[ "${SKU}" != "V100" ]]; then
-        cp "${COMPONENT_DIR}/patches/mlnx-ofa-kernel-peer-mem-gpl.patch" "${patch_dir}/peer-mem-gpl.patch"
-        cat > "${dkms_conf}" <<'EOF'
-PATCH+=("peer-mem-gpl.patch")
-EOF
-    fi
+    local dkms_conf=/etc/dkms/mlnx-ofa_kernel.conf
+    local patch_file=${COMPONENT_DIR}/patches/mlnx-ofa-kernel-dpll-ffo-param.patch
+    local patch_dir=/etc/dkms/mlnx-ofa_kernel/patches
 
     # Alma/Rocky/RHEL 9.8 kernels use Red Hat's newer DPLL ffo_get callback
     # signature, while DOCA 3.2.x / MLNX OFED 25.10 still ships the older one.
-    [[ "${dkms_module}" == "mlnx-ofa_kernel" ]] || return 0
     [[ -f "${kernel_header}" ]] || return 0
     grep -q 'struct dpll_ffo_param \*ffo,' "${kernel_header}" || return 0
 
-    cp "${COMPONENT_DIR}/patches/mlnx-ofa-kernel-dpll-ffo-param.patch" "${patch_dir}/dpll-ffo-param.patch"
-    cat >> "${dkms_conf}" <<'EOF'
-PATCH+=("dpll-ffo-param.patch")
-EOF
-}
-
-configure_mlnx_ofed_kernel_dkms_xdp_patch() {
-    local module_version=25.10.OFED.25.10.3.1.8.1-1
-    local dkms_conf=/etc/dkms/mlnx-ofed-kernel-${module_version}.conf
-    local patch_dir=/etc/dkms/mlnx-ofed-kernel/patches
-
-    [[ "${DISTRIBUTION}" == "ubuntu22.04" && "${DOCA_VERSION}" == "3.2.3" ]] || return 0
-
-    # TODO: Remove when DOCA fixes detection of partially backported XDP APIs.
-    # Install even on older kernels so subsequent DKMS rebuilds get the fix.
     mkdir -p "${patch_dir}"
-    cp "${COMPONENT_DIR}/patches/mlnx-ofed-kernel-xdp-fragments.patch" "${patch_dir}/xdp-fragments.patch"
-    # Append after the optional module-wide PeerDirect patch, without index gaps.
+    cp "${patch_file}" "${patch_dir}/dpll-ffo-param.patch"
     cat > "${dkms_conf}" <<'EOF'
-PATCH+=("xdp-fragments.patch")
+PATCH[0]="dpll-ffo-param.patch"
 EOF
-    # install_cuda_repo_and_dkms.sh provides support for /etc/dkms patch overlays.
 }
 
-install_hpcx_doca_ofed_deps_apt_marker() {
-    local marker_control=/tmp/${HPCX_DOCA_OFED_DEPS_MARKER}
-    local openmpi_version=""
-    local sharp_provides=""
-    local sharp_version=""
-    local ucx_version=""
+if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
+    dpkg -i $DOCA_FILE
 
-    # Install a single equivs marker package telling apt that HPC-X provides the
-    # MPI-adjacent libraries that DOCA would otherwise install from its OFED repo.
-    # This blocks two separate attempts to install an upstream Open MPI .deb:
+    # we prefer distro-shipped dkms and ignore the one from DOCA, unless there is evidence to the contrary
+    cat > /etc/apt/preferences.d/doca-dkms-pin <<PIN
+Package: dkms
+Pin: release l=DOCA-HOST*
+Pin-Priority: -1
+PIN
+
+    apt-get update
+
+    # Install a single equivs marker package telling apt that HPC-X provides Open MPI,
+    # blocking two separate attempts to install an upstream Open MPI .deb:
     #
     #  1. doca-ofed strict-pins `openmpi (= <doca-version>)` which pulls in the
-    #     DOCA-bundled Open MPI .deb. We never use that binary at runtime -- HPC-X
-    #     (installed later by install_mpis.sh) provides Open MPI at /opt -- and the
+    #     DOCA-bundled Open MPI .deb. We never use that binary at runtime — HPC-X
+    #     (installed later by install_mpis.sh) provides Open MPI at /opt — and the
     #     .deb ships /etc/pmix-mca-params.conf, colliding with the pmix package
     #     installed by install_pmix.sh (pmix >=4.2.9-2 dropped its
     #     `Conflicts: openmpi`, so dpkg now aborts with "trying to overwrite
@@ -93,153 +69,48 @@ install_hpcx_doca_ofed_deps_apt_marker() {
     # and the unversioned Canonical names with `Provides: openmpi-bin, libopenmpi-dev,
     # openmpi-common`. We additionally `Conflicts:` the Canonical names so any
     # already-installed Canonical Open MPI is removed when the marker is installed.
-    # The same marker also provides DOCA's strict `ucx` dependency and, before
-    # DOCA 3.3.0, its `sharp` dependency so apt does not install the DOCA-bundled
-    # copies. HPC-X is installed later by install_mpis.sh; on AMD builds,
-    # install_mpis.sh rebuilds HPC-X UCX with ROCm support before ROCm components
-    # use it.
+    # We deliberately do not touch `libopenmpi3` at all: on AMD/ROCm builds,
+    # `libopenmpi3t64` is already installed (indirect dep of mivisionx-dev) and
+    # provides it. Same pattern as ucx-provides-libucx0 in install_rocm.sh.
     apt-get install -y equivs
     openmpi_version=$(apt-cache show openmpi 2>/dev/null | awk '/^Version:/ {print $2; exit}')
     if [[ -z "$openmpi_version" ]]; then
         echo "ERROR: could not read openmpi version from DOCA repo" >&2
         exit 1
     fi
-    ucx_version=$(apt-cache show ucx 2>/dev/null | awk '/^Version:/ {print $2; exit}')
-    if [[ -z "$ucx_version" ]]; then
-        echo "ERROR: could not read ucx version from DOCA repo" >&2
-        exit 1
-    fi
-    if dpkg --compare-versions "${DOCA_VERSION}" lt 3.3.0; then
-        sharp_version=$(apt-cache show sharp 2>/dev/null | awk '/^Version:/ {print $2; exit}')
-        if [[ -z "$sharp_version" ]]; then
-            echo "ERROR: could not read sharp version from DOCA repo" >&2
-            exit 1
-        fi
-        sharp_provides=", sharp (= ${sharp_version})"
-    fi
-    cat > "${marker_control}" <<EOF
+    cat > /tmp/hpcx-provides-openmpi <<EOF
 Section: misc
 Priority: optional
 Homepage: https://github.com/Azure/azhpc-images
 Standards-Version: 3.9.2
 
-Package: ${HPCX_DOCA_OFED_DEPS_MARKER}
-Provides: openmpi (= ${openmpi_version}), openmpi-bin, libopenmpi-dev, openmpi-common, ucx (= ${ucx_version}), libucx0${sharp_provides}
+Package: hpcx-provides-openmpi
+Provides: openmpi (= ${openmpi_version}), openmpi-bin, libopenmpi-dev, openmpi-common
 Conflicts: openmpi-bin, libopenmpi-dev, openmpi-common
-Version: ${DOCA_VERSION}
+Version: ${openmpi_version}
 Maintainer: Azure HPC Platform team <hpcplat@microsoft.com>
-Description: marker package to indicate that HPC-X provides DOCA OFED dependencies
- HPC-X (installed by install_mpis.sh into /opt) provides Open MPI, UCX, and
- SHARP at runtime, so the DOCA-bundled openmpi and ucx packages are redundant.
- Before DOCA 3.3.0, the bundled sharp package is redundant too. The DOCA
- openmpi collides with /etc/pmix-mca-params.conf from the separately-installed
- pmix package, Canonical's Open MPI can pull unsuitable PMIx dependencies, and
- older DOCA SHARP packages can inject stale libtool dependencies on DOCA UCX
- paths under /usr/lib. The libucx0 virtual provide also satisfies later
- Ubuntu/ROCm dependency chains that require libucx0.
+Description: marker package to indicate that HPC-X provides Open MPI
+ HPC-X (installed by install_mpis.sh into /opt) provides Open MPI at runtime,
+ so both the DOCA-bundled openmpi .deb and Canonical's upstream openmpi
+ packages are redundant. The DOCA openmpi additionally collides with
+ /etc/pmix-mca-params.conf from the separately-installed pmix package, and
+ Canonical's openmpi on Jammy depends on a vulnerable PMIx with fixes behind
+ the Ubuntu Pro paywall.
 EOF
     (
         cd /tmp
-        equivs-build "${marker_control}"
-        apt install -y /tmp/${HPCX_DOCA_OFED_DEPS_MARKER}_*_all.deb
+        equivs-build /tmp/hpcx-provides-openmpi
+        dpkg -i /tmp/hpcx-provides-openmpi_*_all.deb
     )
-    rm -f /tmp/${HPCX_DOCA_OFED_DEPS_MARKER}_*_all.deb "${marker_control}"
-}
+    rm -f /tmp/hpcx-provides-openmpi_*_all.deb /tmp/hpcx-provides-openmpi
 
-install_hpcx_doca_ofed_deps_rpm_marker() {
-    if ! command -v rpmbuild >/dev/null 2>&1; then
-        dnf -y install rpm-build
-    fi
-
-    local rpm_topdir=/tmp/${HPCX_DOCA_OFED_DEPS_MARKER}-rpmbuild
-    local spec_file=${rpm_topdir}/SPECS/${HPCX_DOCA_OFED_DEPS_MARKER}.spec
-    local marker_rpm=""
-    local provides=()
-
-    rm -rf "${rpm_topdir}"
-    mkdir -p "${rpm_topdir}"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-    mapfile -t provides < <(
-        dnf repoquery --quiet --requires doca-ofed \
-            | awk '
-                $1 ~ /^(openmpi|sharp|hcoll|mpitests_openmpi|ucx|ucx-cma|ucx-devel|ucx-ib|ucx-ib-mlx5|ucx-knem|ucx-rdmacm|ucx-xpmem)$/ {
-                    if ($2 ~ /^[<>=]+$/ && $3 != "") {
-                        print $1 " = " $3
-                    } else {
-                        print $1
-                    }
-                }' \
-            | sort -u
-    )
-    if [[ ${#provides[@]} -eq 0 ]]; then
-        echo "ERROR: could not derive DOCA OFED Open MPI/UCX/SHARP RPM dependencies" >&2
-        exit 1
-    fi
-
-    cat > "${spec_file}" <<EOF
-Name: ${HPCX_DOCA_OFED_DEPS_MARKER}
-Version: ${DOCA_VERSION}
-Release: 1
-Summary: Marker package to indicate that HPC-X provides DOCA OFED dependencies
-License: MIT
-BuildArch: noarch
-EOF
-    printf 'Provides: %s\n' "${provides[@]}" >> "${spec_file}"
-    cat >> "${spec_file}" <<'EOF'
-
-%description
-HPC-X, installed later by install_mpis.sh into /opt, provides the Open MPI,
-UCX, HCOLL, and SHARP runtime stack used by this image. This marker package
-satisfies DOCA OFED RPM dependencies that would otherwise install the
-DOCA-bundled MPI-adjacent packages.
-
-%prep
-
-%build
-
-%install
-mkdir -p %{buildroot}/usr/share/doc/%{name}
-cat > %{buildroot}/usr/share/doc/%{name}/README <<'README'
-HPC-X provides the MPI-adjacent DOCA OFED dependencies for this image.
-README
-
-%files
-/usr/share/doc/%{name}/README
-EOF
-
-    rpmbuild --define "_topdir ${rpm_topdir}" -bb "${spec_file}"
-    marker_rpm=$(find "${rpm_topdir}/RPMS" -type f -name "${HPCX_DOCA_OFED_DEPS_MARKER}-*.rpm" | head -n1)
-    if [[ -z "${marker_rpm}" ]]; then
-        echo "ERROR: failed to build ${HPCX_DOCA_OFED_DEPS_MARKER} marker RPM" >&2
-        exit 1
-    fi
-    rpm -Uvh --replacepkgs "${marker_rpm}"
-    rm -rf "${rpm_topdir}"
-}
-
-if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    apt install -y "$(realpath "${DOCA_FILE}")"
-
-    # Prefer CUDA repo's newer dkms and ignore the older copy from DOCA.
-    cat > /etc/apt/preferences.d/doca-dkms-pin <<PIN
-Package: dkms
-Pin: release l=DOCA-HOST*
-Pin-Priority: -1
-PIN
-
-    apt-get update
-    install_hpcx_doca_ofed_deps_apt_marker
-    configure_doca_dkms_patches mlnx-ofed-kernel
-    configure_mlnx_ofed_kernel_dkms_xdp_patch
     apt-get -y install doca-ofed
     check_dkms_status mlnx-ofed-kernel iser isert srp
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    download_and_verify $DOCA_URL $DOCA_SHA256
     rpm -i $DOCA_FILE
     dnf clean all
-    install_hpcx_doca_ofed_deps_rpm_marker
     dnf -y install doca-ofed
 else
-    download_and_verify $DOCA_URL $DOCA_SHA256
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
     rpm -i $DOCA_FILE
     dnf clean all
@@ -247,8 +118,7 @@ else
     # Backup
     cp /etc/dnf/dnf.conf /etc/dnf/dnf.conf.bak
     sed -i '/^exclude=/d' /etc/dnf/dnf.conf
-    install_hpcx_doca_ofed_deps_rpm_marker
-    configure_doca_dkms_patches mlnx-ofa_kernel
+    configure_mlnx_ofa_kernel_dkms_dpll_patch
     dnf -y install doca-ofed
     check_dkms_status mlnx-ofa_kernel iser isert srp
     # Restore exclusion
@@ -264,7 +134,7 @@ else
     # split out a brand-new RDMA-core stack with a separate libhns
     # provider and ABI-bumped libibverbs/perftest (IBVERBS_1.15 / HNS_1.0
     # symbols) incompatible with DOCA's libibverbs-2510.0.11-1.el9.
-    # Without this exclude, install_pmix.sh's 'dnf update -y' aborts with:
+    # Without this exclude, install_pmix.sh's 'yum update -y' aborts with:
     #   cannot install both libibverbs-61.0-2.el9 from baseos and
     #   libibverbs-2510.0.11-1.el9 from @System
     # DOCA's 'doca' (userland) repo provides the only rdma-core stack
@@ -277,13 +147,8 @@ else
         echo "ERROR: no packages found from doca* repos after doca-ofed install" >&2
         exit 1
     fi
-    baseos_repo=baseos
-    if [[ $DISTRIBUTION == rhel* ]]; then
-        rhel_version=${DISTRIBUTION#rhel}
-        baseos_repo=rhel-${rhel_version%%.*}-for-${ARCHITECTURE}-baseos-rhui-rpms
-    fi
     mapfile -t baseos_pkgs < <(
-        dnf repoquery --quiet --repo="${baseos_repo}" --qf '%{name}\n' '*' | sort -u
+        dnf repoquery --quiet --repo=baseos --qf '%{name}\n' '*' | sort -u
     )
     mapfile -t baseos_conflicts < <(
         comm -12 \
@@ -293,7 +158,7 @@ else
     if [[ ${#baseos_conflicts[@]} -gt 0 ]]; then
         echo "Pinning ${#baseos_conflicts[@]} baseos package(s) shadowed by DOCA: ${baseos_conflicts[*]}"
         dnf config-manager --save \
-            --setopt="${baseos_repo}.excludepkgs=${baseos_conflicts[*]}" \
+            --setopt="baseos.excludepkgs=${baseos_conflicts[*]}" \
             >/dev/null
     fi
 fi

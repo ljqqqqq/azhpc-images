@@ -40,7 +40,7 @@ function verify_network_components_hook {
 }
 
 function should_verify_ompi_installation {
-    [[ "$DISTRIBUTION" != "ubuntu26.04" && "$DISTRIBUTION" != "ubuntu26.04-aks" ]]
+    return 0
 }
 
 function test_service {
@@ -112,11 +112,7 @@ function verify_common_components {
 
     verify_pssh_installation;
     if [[ "${SKU_FAMILY:-}" != "gb-family" ]]; then
-        # MVAPICH is intentionally not built on Ubuntu 26.04 (libfabric +
-        # MVAPICH 4.1 don't compile on resolute's gcc 15; see install_mpis.sh).
-        if [[ "$DISTRIBUTION" != "ubuntu26.04" && "$DISTRIBUTION" != "ubuntu26.04-aks" ]]; then
-            verify_mvapich2_installation;
-        fi
+        verify_mvapich2_installation;
         verify_mkl_installation;
         verify_hpcdiag_installation;
         verify_aznfs_installation;

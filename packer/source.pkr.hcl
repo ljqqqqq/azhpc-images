@@ -9,7 +9,9 @@ packer {
 
   required_plugins {
     azure = {
-      version = "~> 2.6.3"
+      # Pinned to 2.6.1 as 2.6.2 has a regression on log
+      # throughput
+      version = "2.6.1"
       source  = "github.com/hashicorp/azure"
     }
   }
@@ -92,7 +94,7 @@ source "azure-arm" "hpc" {
   # VM Configuration
   os_type         = "Linux"
   vm_size         = local.build_vm_size
-  os_disk_size_gb = local.os_family == "rhel" ? 128 : 64
+  os_disk_size_gb = 64
 
   # SSH Configuration
   communicator           = "ssh"

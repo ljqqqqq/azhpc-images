@@ -11,98 +11,75 @@ NCCL_RDMA_SHARP_COMMIT=$(jq -r '.rdmasharpplugins.commit' <<< $nccl_metadata)
 cuda_metadata=$(get_component_config "cuda")
 CUDA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $cuda_metadata)
 
-# Leave one core free for sshd/agent, but never pass -j 0 on single-core VMs.
-MAKE_JOBS=$(( $(nproc) > 1 ? $(nproc) - 1 : 1 ))
-
 TARBALL="v${NCCL_VERSION}.tar.gz"
 NCCL_DOWNLOAD_URL=https://github.com/NVIDIA/nccl/archive/refs/tags/${TARBALL}
 
 # Install NCCL
-if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-    apt install -y build-essential patchelf zlib1g-dev
-elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
+if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     apt install -y build-essential devscripts debhelper fakeroot patch patchelf
     # Comment the installation of libibverbs-dev to avoid conflicts on builds for bare metal 1P nodes
     # For VM it has been installed via the install_utils.sh or install_doca.sh
-    apt install -y zlib1g-dev # libibverbs-dev
+    apt install -y zlib1g-dev # libibverbs-dev 
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    dnf install -y rpm-build rpmdevtools autoconf automake git libtool patch patchelf
+    tdnf install -y rpm-build rpmdevtools autoconf automake git libtool patch patchelf
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
-    dnf install -y rpm-build rpmdevtools patch patchelf
+    yum install -y rpm-build rpmdevtools patch patchelf
 fi
 
 pushd /tmp
-if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-    apt-get install -y libnccl2 libnccl-dev
-    apt-mark hold libnccl2
-    apt-mark hold libnccl-dev
-    NCCL_VERSION=$(dpkg-query -W -f='${Version}' libnccl2 | sed 's/+cuda.*//')
+wget ${NCCL_DOWNLOAD_URL}
+tar -xvf ${TARBALL}
+
+pushd nccl-${NCCL_VERSION}
+
+# Temporary low-overhead lifecycle diagnostic for the NCCL proxy ops-pool race.
+# NCCL 2.30 moved the Linux SHM implementation from shmutils.cc to linux.cc;
+# select by source layout so every NCCL version built by this script is patched.
+if [[ -f src/os/linux.cc ]]; then
+    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-unlink-diag-linux-os.patch"
+elif [[ -f src/misc/shmutils.cc ]]; then
+    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-unlink-diag-shmutils.patch"
 else
-    wget ${NCCL_DOWNLOAD_URL}
-    tar -xvf ${TARBALL}
-
-    pushd nccl-${NCCL_VERSION}
-
-    # Temporary low-overhead lifecycle diagnostic for the NCCL proxy ops-pool race.
-    # NCCL 2.30 moved the Linux SHM implementation from shmutils.cc to linux.cc;
-    # select by source layout so every source-built NCCL version is patched.
-    if [[ -f src/os/linux.cc ]]; then
-        patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-unlink-diag-linux-os.patch"
-    elif [[ -f src/misc/shmutils.cc ]]; then
-        patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-unlink-diag-shmutils.patch"
-    else
-        echo "Unable to locate the NCCL Linux shared-memory implementation" >&2
-        exit 1
-    fi
-    patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-init-exit-diag.patch"
-
-    make -j ${MAKE_JOBS} src.build
-    if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-        make pkg.debian.build
-        pushd build/pkg/deb/
-        apt install -y ./libnccl2_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_${ARCHITECTURE_DISTRO}.deb
-        apt-mark hold libnccl2
-        apt install -y ./libnccl-dev_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_${ARCHITECTURE_DISTRO}.deb
-        apt-mark hold libnccl-dev
-        popd
-    elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-        make pkg.redhat.build
-        if [ "$ARCHITECTURE" = "aarch64" ]; then
-            dnf install -y ./build/pkg/rpm/aarch64/libnccl-${NCCL_VERSION}+cuda*.aarch64.rpm
-            dnf install -y ./build/pkg/rpm/aarch64/libnccl-devel-${NCCL_VERSION}+cuda*.aarch64.rpm
-            dnf install -y ./build/pkg/rpm/aarch64/libnccl-static-${NCCL_VERSION}+cuda*.aarch64.rpm
-        else
-            dnf install -y ./build/pkg/rpm/x86_64/libnccl-${NCCL_VERSION}+cuda*.x86_64.rpm
-            dnf install -y ./build/pkg/rpm/x86_64/libnccl-devel-${NCCL_VERSION}+cuda*.x86_64.rpm
-            dnf install -y ./build/pkg/rpm/x86_64/libnccl-static-${NCCL_VERSION}+cuda*.x86_64.rpm
-        fi
-
-        dnf_pin_packages "libnccl*"
-    else
-        # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
-        make pkg.redhat.build
-        rpm -i ./build/pkg/rpm/x86_64/libnccl-${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}.x86_64.rpm
-        rpm -i ./build/pkg/rpm/x86_64/libnccl-devel-${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}.x86_64.rpm
-        rpm -i ./build/pkg/rpm/x86_64/libnccl-static-${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}.x86_64.rpm
-        dnf_pin_packages "libnccl*"
-    fi
-    popd
+    echo "Unable to locate the NCCL Linux shared-memory implementation" >&2
+    exit 1
 fi
+patch --batch --forward -p1 < "${COMPONENT_DIR}/patches/nccl-shm-init-exit-diag.patch"
+
+make -j $(( $(nproc) - 1 )) src.build
+if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
+    make pkg.debian.build
+    pushd build/pkg/deb/
+    dpkg -i libnccl2_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_${ARCHITECTURE_DISTRO}.deb
+    apt-mark hold libnccl2
+    dpkg -i libnccl-dev_${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}_${ARCHITECTURE_DISTRO}.deb
+    apt-mark hold libnccl-dev
+    popd
+elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
+    make pkg.redhat.build
+    if [ "$ARCHITECTURE" = "aarch64" ]; then
+        tdnf install -y ./build/pkg/rpm/aarch64/libnccl-${NCCL_VERSION}+cuda*.aarch64.rpm
+        tdnf install -y ./build/pkg/rpm/aarch64/libnccl-devel-${NCCL_VERSION}+cuda*.aarch64.rpm
+        tdnf install -y ./build/pkg/rpm/aarch64/libnccl-static-${NCCL_VERSION}+cuda*.aarch64.rpm
+    else
+        tdnf install -y ./build/pkg/rpm/x86_64/libnccl-${NCCL_VERSION}+cuda*.x86_64.rpm
+        tdnf install -y ./build/pkg/rpm/x86_64/libnccl-devel-${NCCL_VERSION}+cuda*.x86_64.rpm
+        tdnf install -y ./build/pkg/rpm/x86_64/libnccl-static-${NCCL_VERSION}+cuda*.x86_64.rpm
+    fi
+
+    dnf_pin_packages "libnccl*"
+else
+    # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
+    make pkg.redhat.build
+    rpm -i ./build/pkg/rpm/x86_64/libnccl-${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}.x86_64.rpm
+    rpm -i ./build/pkg/rpm/x86_64/libnccl-devel-${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}.x86_64.rpm
+    rpm -i ./build/pkg/rpm/x86_64/libnccl-static-${NCCL_VERSION}+cuda${CUDA_DRIVER_VERSION}.x86_64.rpm
+    dnf_pin_packages "libnccl*"
+fi
+popd
 
 # Install the nccl rdma sharp plugin. Skip for non-IB SKUs (no DOCA-OFED, no SHARP, no GPUDirect RDMA)
 if [[ "$(sku_network_mode)" == "standard_ib" ]]; then
-    source /etc/profile.d/modules.sh
-    module load mpi/hpcx
-
-    if [[ -z "${HPCX_SHARP_DIR:-}" || ! -d "${HPCX_SHARP_DIR}" ]]; then
-        echo "HPC-X module did not provide a valid HPCX_SHARP_DIR; cannot build NCCL RDMA SHARP plugin."
-        exit 1
-    fi
-    if [[ -z "${HPCX_UCX_DIR:-}" || ! -d "${HPCX_UCX_DIR}" ]]; then
-        echo "HPC-X module did not provide a valid HPCX_UCX_DIR; cannot build NCCL RDMA SHARP plugin."
-        exit 1
-    fi
     mkdir -p /usr/local/nccl-rdma-sharp-plugins
     git clone https://github.com/Mellanox/nccl-rdma-sharp-plugins.git
     pushd nccl-rdma-sharp-plugins
@@ -116,13 +93,8 @@ if [[ "$(sku_network_mode)" == "standard_ib" ]]; then
     ./configure --prefix=/usr/local/nccl-rdma-sharp-plugins --with-cuda=/usr/local/cuda
     make
     make install
-    cat > /etc/ld.so.conf.d/nccl-rdma-sharp-plugins.conf <<EOF
-/usr/local/nccl-rdma-sharp-plugins/lib
-EOF
-    ldconfig
     popd
     write_component_version "NCCL-RDMA_SHARP_PLUGIN" ${NCCL_RDMA_SHARP_COMMIT}
-    module unload mpi/hpcx
 fi
 
 # Build the nccl tests
@@ -130,20 +102,13 @@ source /etc/profile.d/modules.sh
 module load mpi/hpcx
 git clone https://github.com/NVIDIA/nccl-tests.git
 pushd nccl-tests
-make -j ${MAKE_JOBS} MPI=1 MPI_HOME=${HPCX_MPI_DIR} CUDA_HOME=/usr/local/cuda
+make MPI=1 MPI_HOME=${HPCX_MPI_DIR} CUDA_HOME=/usr/local/cuda
 popd
 mv nccl-tests /opt/.
 module unload mpi/hpcx
 popd
 
 write_component_version "NCCL" ${NCCL_VERSION}
-
-if [[ $DISTRIBUTION == "ubuntu22.04" ]]; then
-    # patchelf is only needed at build time (nccl-rdma-sharp-plugins' make install
-    # runs patchelf --set-soname). The Jammy patchelf has a publishing-blocking CVE
-    # (USN-6036-1) whose fix requires Ubuntu Pro/ESM, so drop it from the image.
-    apt-get purge -y patchelf
-fi
 
 # Remove installation files
 rm -rf /tmp/${TARBALL}

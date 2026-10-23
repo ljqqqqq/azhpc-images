@@ -58,10 +58,10 @@ elif [[ $DISTRIBUTION == almalinux* ]]; then
     elif [[ $DISTRIBUTION == almalinux9* ]]; then
         rpm --import https://repo.almalinux.org/almalinux/RPM-GPG-KEY-AlmaLinux-9
     fi
-    dnf install -y jq
+    yum install -y jq    
     export MODULE_FILES_DIRECTORY=/usr/share/Modules/modulefiles
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    dnf install -y jq
+    tdnf install -y jq
     export MODULE_FILES_DIRECTORY=/usr/share/Modules/modulefiles
 else
     # Rocky Linux, RHEL, and other RHEL-family distros

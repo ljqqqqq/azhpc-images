@@ -3,18 +3,9 @@ set -ex
 
 source ${UTILS_DIR}/utilities.sh
 
-INSTALL_NVIDIA_CONTAINER_TOOLKIT=false
-if [[ "${GPU:-NVIDIA}" == "NVIDIA" ]]; then
-    INSTALL_NVIDIA_CONTAINER_TOOLKIT=true
-fi
-
 # Install Moby Engine and CLI
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-    # Ubuntu 26.04 no longer ships Microsoft's moby-* packages; switch to
-    # Canonical's docker.io / docker-buildx on all architectures.
-    if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-        apt-get install -y docker.io docker-buildx
-    elif [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" == "baremetal_3p" ]]; then
+    if [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" == "baremetal_3p" ]]; then
         # Baremetal aarch64: pin to a specific moby version from the baremetal package repo.
         moby_metadata=$(get_component_config "moby")
         MOBY_VERSION=$(jq -r '.version' <<< $moby_metadata)
@@ -26,9 +17,9 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         apt-get install -y moby-buildx
     fi
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    dnf install -y moby-engine
-    dnf install -y moby-cli
-    dnf install -y docker-buildx
+    tdnf install -y moby-engine
+    tdnf install -y moby-cli
+    tdnf install -y docker-buildx
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
     # NOTE: on el8 the MS repo is marked with `module_hotfixes=1` by the
@@ -36,48 +27,40 @@ else
     # [distros/rocky8.10/install_utils.sh]). That bypasses dnf modular
     # filtering for moby-runc (which `Provides: runc`, a name claimed by
     # the AppStream `container-tools` module) without disabling the module.
-    dnf install -y moby-engine
-    dnf install -y moby-cli
-    dnf install -y moby-buildx
+    yum install -y moby-engine
+    yum install -y moby-cli
+    yum install -y moby-buildx
 fi
 
-if [[ "$INSTALL_NVIDIA_CONTAINER_TOOLKIT" == true ]]; then
-    $COMPONENT_DIR/install_nvidia_container_toolkit.sh
-fi
+$COMPONENT_DIR/install_nvidia_container_toolkit.sh
 
 # enable and restart the docker daemon to complete the installation
 systemctl enable docker
 systemctl restart docker
 
-if [[ "$INSTALL_NVIDIA_CONTAINER_TOOLKIT" == true ]]; then
-    # restart containerd service and wait for socket to be ready
-    systemctl restart containerd
-    for i in $(seq 1 30); do
-        if [ -S /run/containerd/containerd.sock ]; then
-            break
-        fi
-        echo "Waiting for containerd socket... ($i/30)"
-        sleep 1
-    done
+# restart containerd service and wait for socket to be ready
+systemctl restart containerd
+for i in $(seq 1 30); do
+    if [ -S /run/containerd/containerd.sock ]; then
+        break
+    fi
+    echo "Waiting for containerd socket... ($i/30)"
+    sleep 1
+done
 
-    # status of containerd snapshotter plugins
-    ctr plugin ls
-fi
+# status of containerd snapshotter plugins
+ctr plugin ls
 
 # Write the docker version to components file
 docker_version=$(docker --version | awk -F' ' '{print $3}')
 write_component_version "DOCKER" ${docker_version::-1}
 
 if [[ $DISTRIBUTION == ubuntu* ]]; then
-    if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
-        moby_version=$(dpkg-query -W -f='${Version}' docker.io)
-    else
-        moby_version=$(apt list --installed | grep moby-engine | awk -F' ' '{print $2}')
-    fi
+    moby_version=$(apt list --installed | grep moby-engine | awk -F' ' '{print $2}')
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     moby_version=$(rpm -qa | grep moby | cut -d'-' -f3,4)
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
-    moby_version=$(dnf list installed | grep moby-engine | awk -F' ' '{print $2}')
+    moby_version=$(yum list installed | grep moby-engine | awk -F' ' '{print $2}')
 fi
 write_component_version "MOBY_ENGINE" ${moby_version}

@@ -25,14 +25,11 @@ source ../../utils/set_properties.sh
 
 ./install_utils.sh
 
-# Fix legacy SETools version lookup for CycleCloud compatibility
-$COMPONENT_DIR/fix_setools_cyclecloud.sh
+# update cmake
+$COMPONENT_DIR/install_cmake.sh
 
 # install DOCA OFED
 $COMPONENT_DIR/install_doca.sh
-
-# Install CUDA before MPI so HPC-X can rebuild Open MPI with CUDA support.
-$COMPONENT_DIR/install_nvidiagpudriver.sh
 
 # install PMIX
 $COMPONENT_DIR/install_pmix.sh
@@ -46,6 +43,9 @@ $COMPONENT_DIR/install_lustre_client.sh
 
 # install mpifileutils
 $COMPONENT_DIR/install_mpifileutils.sh
+
+# install nvidia gpu driver
+$COMPONENT_DIR/install_nvidiagpudriver.sh
 
 # Install NCCL
 $COMPONENT_DIR/install_nccl.sh
@@ -113,7 +113,7 @@ $COMPONENT_DIR/trivy_scan.sh
 # add interface rules
 ./network-config.sh
 
-dnf update -y
+yum update -y
 
 # clear history
 # Uncomment the line below if you are running this on a VM

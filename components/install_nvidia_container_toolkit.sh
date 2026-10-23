@@ -24,24 +24,24 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # Remove unwanted repos
     rm -f /etc/apt/sources.list.d/nvidia*
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    dnf install --noplugins -y nvidia-container-toolkit-base nvidia-container-toolkit
-    dnf install --noplugins -y nvidia-container-runtime
+    tdnf install --noplugins -y nvidia-container-toolkit-base nvidia-container-toolkit
+    tdnf install --noplugins -y nvidia-container-runtime
     dnf_pin_packages "*nvidia-container*"
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
     curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
     sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
 
-    dnf clean expire-cache
-    dnf install -y nvidia-container-toolkit
+    yum clean expire-cache
+    yum install -y nvidia-container-toolkit
 
     # Mark the installed packages on hold to disable updates
     dnf_pin_packages "*nvidia-container*"
 
     # Clean repos
     rm -rf /etc/yum.repos.d/nvidia-*
-    rm -rf /var/cache/dnf/*/nvidia-*
-    rm -rf /var/cache/dnf/*/libnvidia-container/
+    rm -rf /var/cache/yum/x86_64/*/nvidia-*
+    rm -rf /var/cache/yum/x86_64/*/libnvidia-container/
 fi
 
 # Configure NVIDIA Container Toolkit

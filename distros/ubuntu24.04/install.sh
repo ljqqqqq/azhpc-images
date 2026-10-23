@@ -25,6 +25,11 @@ source ${UTILS_DIR}/utilities.sh
 
 ./install_utils.sh
 
+if [ "$SKU" != "GB200" ]; then
+    # update cmake
+    $COMPONENT_DIR/install_cmake.sh
+fi
+
 # install DOCA OFED. Skip for non-IB SKUs. DOCA's ib_core breaks mana_ib on MANA-only hardware
 if [[ "$(sku_network_mode)" != "no_rdma" ]]; then
     $COMPONENT_DIR/install_doca.sh
@@ -40,23 +45,6 @@ else
     echo "blacklist mana_ib" | tee /etc/modprobe.d/blacklist-mana-ib.conf
 fi
 
-if [ "$GPU" = "AMD" ]; then
-    # Install ROCm before MPI so HPC-X can rebuild UCX with ROCm support.
-    $COMPONENT_DIR/install_rocm.sh
-fi
-
-if [ "$GPU" = "NVIDIA" ]; then
-    # Install CUDA before MPI so HPC-X can rebuild Open MPI with CUDA support.
-    if [ "$SKU" = "GB200" ]; then
-        # For GB200, pass SKU to install the correct driver.
-        $COMPONENT_DIR/install_nvidiagpudriver.sh
-    elif [ "$SKU" = "NCv6" ]; then
-        $COMPONENT_DIR/install_nvidiagriddriver.sh
-    else
-        $COMPONENT_DIR/install_nvidiagpudriver.sh
-    fi
-fi
-
 # install PMIX
 $COMPONENT_DIR/install_pmix.sh
 
@@ -64,7 +52,11 @@ $COMPONENT_DIR/install_pmix.sh
 $COMPONENT_DIR/install_mpis.sh
 
 if [ "$GPU" = "NVIDIA" ]; then
+    # install nvidia gpu driver
+
     if [ "$SKU" = "GB200" ]; then
+        # For GB200, pass SKU to install the correct driver
+        $COMPONENT_DIR/install_nvidiagpudriver.sh
         # Install NVSHMEM
         $COMPONENT_DIR/install_nvshmem.sh
 
@@ -74,22 +66,30 @@ if [ "$GPU" = "NVIDIA" ]; then
         # Install NVBandwidth tool
         $COMPONENT_DIR/install_nvbandwidth_tool.sh
 
+    elif [ "$SKU" = "NCv6" ]; then
+        $COMPONENT_DIR/install_nvidiagriddriver.sh
+    else
+        $COMPONENT_DIR/install_nvidiagpudriver.sh
     fi
     
     # Install NCCL
     $COMPONENT_DIR/install_nccl.sh
     
-fi
+    # Install NVIDIA docker container
+    $COMPONENT_DIR/install_docker.sh
 
-# Install Docker container runtime
-$COMPONENT_DIR/install_docker.sh
-
-if [ "$GPU" = "NVIDIA" ]; then
     # Install DCGM
     $COMPONENT_DIR/install_dcgm.sh
 fi
 
 if [ "$GPU" = "AMD" ]; then
+    # Set up docker
+    apt-get install -y moby-engine
+    systemctl enable docker
+    systemctl restart docker
+
+    #install rocm software stack
+    $COMPONENT_DIR/install_rocm.sh    
     #install rccl and rccl-tests
     $COMPONENT_DIR/install_rccl.sh
 fi
@@ -164,6 +164,9 @@ $COMPONENT_DIR/setup_sku_customizations.sh
 
 # scan vulnerabilities using Trivy
 $COMPONENT_DIR/trivy_scan.sh
+
+# diable auto kernel updates
+./disable_auto_upgrade.sh
 
 # Disable Predictive Network interface renaming
 ./disable_predictive_interface_renaming.sh

@@ -26,10 +26,10 @@ echo "=== Installing mpifileutils ${MPIFILEUTILS_VERSION} ==="
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     apt-get install -y libbz2-dev libattr1-dev libarchive-dev libssl-dev libcap-dev
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    dnf install -y bzip2-devel libattr-devel libarchive-devel
+    tdnf install -y bzip2-devel libattr-devel libarchive-devel
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
-    dnf install -y bzip2-devel libattr-devel libarchive-devel
+    yum install -y bzip2-devel libattr-devel libarchive-devel
 fi
 
 # Create directories

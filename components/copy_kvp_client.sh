@@ -8,5 +8,4 @@ wget https://raw.githubusercontent.com/microsoft/lis-test/master/WS2012R2/lisa/t
 
 mv ./kvp_client.c $DEST_DIR
 
-gcc -Wno-error=implicit-function-declaration -Wno-error=implicit-int \
-    $DEST_DIR/kvp_client.c -o $DEST_DIR/kvp_client
+gcc $DEST_DIR/kvp_client.c -o $DEST_DIR/kvp_client
