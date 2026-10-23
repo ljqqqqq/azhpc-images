@@ -1,8 +1,6 @@
 #!/bin/bash
 set -ex
 
-sed -i '/^exclude.*/d' /etc/dnf/dnf.conf
-
 # Check if arguments are passed
 if [ -z "$1" ] || [ -z "$2" ]; then
     echo "Error: Missing arguments. Please provide both GPU type (NVIDIA/AMD) and SKU."
@@ -19,21 +17,25 @@ if [[ "$#" -gt 0 ]]; then
     fi
 fi
 
-# Install jq early (needed by set_properties.sh)
-sudo dnf install -y jq
-
 source ../../utils/set_properties.sh
 
 ./install_utils.sh
 
-# Fix python3-setools bug for CycleCloud compatibility (Rocky 8.x only)
+# Fix legacy SETools version lookup for CycleCloud compatibility
 $COMPONENT_DIR/fix_setools_cyclecloud.sh
-
-# update cmake
-$COMPONENT_DIR/install_cmake.sh
 
 # install DOCA OFED
 $COMPONENT_DIR/install_doca.sh
+
+if [ "$GPU" = "AMD" ]; then
+    # Install ROCm before MPI so HPC-X can rebuild UCX with ROCm support.
+    $COMPONENT_DIR/install_rocm.sh "$SKU"
+fi
+
+if [ "$GPU" = "NVIDIA" ]; then
+    # Install CUDA before MPI so HPC-X can rebuild Open MPI with CUDA support.
+    $COMPONENT_DIR/install_nvidiagpudriver.sh "$SKU"
+fi
 
 # install PMIX
 $COMPONENT_DIR/install_pmix.sh
@@ -49,28 +51,20 @@ $COMPONENT_DIR/install_lustre_client.sh
 $COMPONENT_DIR/install_mpifileutils.sh
 
 if [ "$GPU" = "NVIDIA" ]; then
-    # install nvidia gpu driver
-    $COMPONENT_DIR/install_nvidiagpudriver.sh "$SKU"
-
     # Install NCCL
     $COMPONENT_DIR/install_nccl.sh
 
-    # Install NVIDIA docker container
-    $COMPONENT_DIR/install_docker.sh
+fi
 
+# Install Docker container runtime
+$COMPONENT_DIR/install_docker.sh
+
+if [ "$GPU" = "NVIDIA" ]; then
     # Install DCGM
     $COMPONENT_DIR/install_dcgm.sh
 fi
 
 if [ "$GPU" = "AMD" ]; then
-    # Set up docker for AMD
-    dnf install -y moby-engine moby-cli
-    systemctl enable docker
-    systemctl restart docker
-
-    # install rocm software stack
-    $COMPONENT_DIR/install_rocm.sh "$SKU"
-
     # install rccl and rccl-tests
     $COMPONENT_DIR/install_rccl.sh
 fi

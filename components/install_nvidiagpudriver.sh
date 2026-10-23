@@ -7,6 +7,26 @@ source ${UTILS_DIR}/utilities.sh
 nvidia_metadata=$(get_component_config "nvidia")
 cuda_metadata=$(get_component_config "cuda")
 
+# Some configurations, such as MRC images and certain CRDs, require NVIDIA
+# driver packages from a local NVIDIA repository. This repository contains
+# driver packages but does not contain the CUDA toolkit, so install drivers
+# from the local repository and continue to install the CUDA toolkit from the
+# online CUDA repository.
+function install_from_nvidia_local_repo {
+    local repo_file=$1
+    local repo_dir=${repo_file%%_*}
+
+    apt install -y "$TOP_DIR/internal_bits/$repo_file"
+    cp /var/$repo_dir/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
+
+    cat <<EOF > /etc/apt/preferences.d/00-nvidia-prefer
+Package: *
+Pin: origin ""
+Pin-Priority: 1001
+EOF
+    apt update
+}
+
 if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     if [ "$SKU" = "V100" ]; then
         # V100 requires proprietary kernel modules
@@ -25,50 +45,22 @@ if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
         curl https://developer.download.nvidia.com/compute/cuda/repos/azl3/x86_64/cuda-azl3.repo > /etc/yum.repos.d/cuda-azl3.repo
     fi
 
-    # Disable the NVIDIA CUDA repo during driver install — all driver
+    # Disable the NVIDIA CUDA repo during driver install -- all driver
     # packages come from PMC and the CUDA repo has an identically-named
     # 'cuda' meta-package that would conflict.
-    # Do not use this before bugfixed tdnf lands (https://github.com/vmware/tdnf/pull/553/commits/a418054b02c4cac787184f973dac4d6790344ef3)
-    # or before switching to dnf
-    # tdnf install -y --disablerepo=cuda-azl3* $AL3_GPU_DRIVER_PACKAGES
-    tdnf install -y --disablerepo=cuda-azl3-x86_64 --disablerepo=cuda-azl3-sbsa $AL3_GPU_DRIVER_PACKAGES
-    NVIDIA_DRIVER_VERSION=$(tdnf list installed | grep "^${AL3_GPU_DRIVER_PACKAGES}\." | sed 's/.*\s\+\([0-9.]\+-[0-9]\+\)_.*/\1/')
+    dnf install -y --disablerepo='cuda-azl3*' $AL3_GPU_DRIVER_PACKAGES
+    NVIDIA_DRIVER_VERSION=$(dnf list installed | grep "^${AL3_GPU_DRIVER_PACKAGES}\." | sed 's/.*\s\+\([0-9.]\+-[0-9]\+\)_.*/\1/')
 
-    # Temp disable NVIDIA driver updates
-    mkdir -p /etc/tdnf/locks.d
-    echo cuda >> /etc/tdnf/locks.d/nvidia.conf
+    # Keep later DNF operations from moving the PMC-installed driver family.
+    dnf_pin_packages "${AL3_GPU_DRIVER_PACKAGES}"
 elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # APT-based NVIDIA driver installation for Ubuntu
     NVIDIA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_metadata)
-    CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
 
-    if [ "$ARCHITECTURE" = "aarch64" ]; then
-        CUDA_ARCHITECTURE="sbsa"
-    else
-        CUDA_ARCHITECTURE="x86_64"
-    fi
-    # Add NVIDIA CUDA APT repo (provides both driver and toolkit packages)
-    wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/cuda-keyring_1.1-1_all.deb
-    dpkg -i ./cuda-keyring_1.1-1_all.deb
-    apt-get update
-
-    # MRC image uses local NVIDIA repo for nvidia driver packages
-    # The local NVIDIA repo and cuda repo downloaded from online contain the nvidia driver packages: prefer NVIDIA local repo over other sources
-    # Nvidia driver packages should be installed from the local NVIDIA repo
-    # Cuda toolkit packages should be installed from the downloaded CUDA repo
-    if _is_mrc_network; then
+    NVIDIA_DRIVER_SOURCE=$(jq -r '.driver.source' <<< $nvidia_metadata)
+    if _is_mrc_network || [ "$NVIDIA_DRIVER_SOURCE" = "private" ]; then
         NVIDIA_GPU_DRIVER_REPO_FILE=$(jq -r '.driver.repo_file' <<< $nvidia_metadata)
-        dpkg -i $TOP_DIR/internal_bits/$NVIDIA_GPU_DRIVER_REPO_FILE
-        NVIDIA_GPU_DRIVER_REPO_DIR=$(echo $NVIDIA_GPU_DRIVER_REPO_FILE | awk -F'_' '{print $1}')
-        cp /var/$NVIDIA_GPU_DRIVER_REPO_DIR/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
-        
-        # Set preference BEFORE apt update so priority rules are applied during metadata refresh
-        cat <<EOF > /etc/apt/preferences.d/00-nvidia-prefer
-Package: *
-Pin: origin ""
-Pin-Priority: 1001
-EOF
-        apt update
+        install_from_nvidia_local_repo "$NVIDIA_GPU_DRIVER_REPO_FILE"
     fi
     # Pin the driver version and install via APT packages
     apt install nvidia-driver-pinning-${NVIDIA_DRIVER_VERSION} -y
@@ -82,6 +74,10 @@ EOF
     else
         # A100, H100, H200 use open kernel modules
         apt install nvidia-open -y
+    fi
+
+    if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
+        NVIDIA_DRIVER_VERSION=$(dpkg-query -W -f='${Version}' nvidia-open | sed 's/-.*//')
     fi
 
     # Remove unused configuration file if created by the NVIDIA driver package
@@ -128,7 +124,7 @@ touch /etc/modules-load.d/nvidia-peermem.conf
 echo "nvidia_peermem" >> /etc/modules-load.d/nvidia-peermem.conf
 
 
-if [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" == "baremetal_1p" ]]; then
+if [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" == "baremetal_1p" || "${TARGET_NODE_TYPE:-azure_vm_regular}" == "baremetal_3p" ]]; then
     echo "options nvidia NVreg_GrdmaPciTopoCheckOverride=1" >> /etc/modprobe.d/nvidia.conf
 fi
 
@@ -142,7 +138,7 @@ if [[ "$TARGET_NODE_TYPE" != "azure_vm_akshost" ]]; then
         # NVIDIA APT repo already configured during driver installation
         apt install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
     elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then    
-        tdnf install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
+        dnf install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
     else
         # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
         dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/x86_64/cuda-${CUDA_DRIVER_DISTRIBUTION}.repo
@@ -156,8 +152,20 @@ if [[ "$TARGET_NODE_TYPE" != "azure_vm_akshost" ]]; then
         # install_nvidia_fabric_manager.sh excluding nvidia-fabricmanager*
         # from cuda-azl3 on AzureLinux 3, and a per-repo replacement for
         # the (removed) global DOCA pin in install_doca.sh.
+        cuda_excludes="mft* kernel-mft*"
+        # CUDA 13 cccl packages obsolete cuda-cccl-12-*, which is still required
+        # by cuda-cudart-devel-12-* and makes later DNF transactions unsolvable.
+        if [[ "${CUDA_DRIVER_VERSION}" == 12.* ]]; then
+            cuda_excludes="${cuda_excludes} cccl-*"
+            if [[ $DISTRIBUTION == rhel* ]]; then
+                rhel_version=${DISTRIBUTION#rhel}
+                dnf config-manager --save \
+                    --setopt="rhel-${rhel_version%%.*}-for-${ARCHITECTURE}-supplementary-rhui-rpms.excludepkgs=cccl-*" >/dev/null
+            fi
+        fi
+
         dnf config-manager --save \
-            --setopt="cuda-${CUDA_DRIVER_DISTRIBUTION}-x86_64.excludepkgs=mft* kernel-mft*" >/dev/null
+            --setopt="cuda-${CUDA_DRIVER_DISTRIBUTION}-x86_64.excludepkgs=${cuda_excludes}" >/dev/null
 
         dnf clean expire-cache
         dnf install -y cuda-toolkit-${CUDA_DRIVER_VERSION//./-}
@@ -193,13 +201,15 @@ else
     IMEX_VERSION=$(jq -r '.version' <<< $nvidia_imex_metadata)
 
     if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-        tdnf install -y nvidia-imex-${IMEX_VERSION}
+        dnf install -y nvidia-imex-${IMEX_VERSION}
     elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         apt-get install nvidia-imex -y
     else
         echo "Unsupported distribution for nvidia-imex: $DISTRIBUTION"
         exit 1
     fi
+
+    write_component_version "IMEX" $IMEX_VERSION
 
     # Add configuration to /etc/modprobe.d/nvidia.conf
     cat <<EOF >> /etc/modprobe.d/nvidia.conf

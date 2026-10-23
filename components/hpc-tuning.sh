@@ -8,7 +8,7 @@ if [[ $DISTRIBUTION == "ubuntu22.04" ]]; then
 
     # Disable some unneeded services by default (administrators can re-enable if desired)
     systemctl disable ufw
-elif [[ $DISTRIBUTION == "ubuntu24.04" ]]; then
+elif [[ $DISTRIBUTION == "ubuntu24.04" ]] || [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
     apt install -y python3-netifaces
     apt install -y python3-yaml
     systemctl disable ufw
@@ -20,9 +20,9 @@ elif [[ $DISTRIBUTION == almalinux* ]] || [[ $DISTRIBUTION == rocky* ]] || [[ $D
         systemctl disable firewalld
     fi
     # Remove auoms if exists - Prevent CPU utilization by auoms
-    if yum list installed azsec-monitor >/dev/null 2>&1; then yum remove -y azsec-monitor; fi
+    if dnf list installed azsec-monitor >/dev/null 2>&1; then dnf remove -y azsec-monitor; fi
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    if tdnf list installed azsec-monitor >/dev/null 2>&1; then tdnf remove -y azsec-monitor; fi
+    if dnf list installed azsec-monitor >/dev/null 2>&1; then dnf remove -y azsec-monitor; fi
 fi
 
 if [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
@@ -101,7 +101,7 @@ fi
 cat > /etc/udev/rules.d/90-nfs-readahead.rules << EOM
 SUBSYSTEM=="bdi", \
 ACTION=="add", \
-PROGRAM="/usr/bin/awk -v bdi=\$kernel 'BEGIN{ret=1} {if (\$4 == bdi) {ret=0}} END{exit ret}' /proc/fs/nfsfs/volumes", \
+PROGRAM="/usr/bin/awk -v bdi=\$kernel 'BEGIN{ret=1} {if (\$\$4 == bdi) {ret=0}} END{exit ret}' /proc/fs/nfsfs/volumes", \
 ATTR{read_ahead_kb}="15380"
 EOM
 

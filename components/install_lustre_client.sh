@@ -24,25 +24,6 @@ echo --with-o2ib=no
 EOF
 }
 
-install_cuda_dkms_3_4_1_for_jammy_amd() {
-    local dkms_url=https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/dkms_3.4.1-1ubuntu1_all.deb
-    local dkms_sha256=16ce508e74cbe8426fe19c1c56de5ea6e9f3dbe05d85ba5cbf5a8a271d34c2be
-    local dkms_deb=$(basename "${dkms_url}")
-    local current_version
-
-    [[ "${DISTRIBUTION}" == "ubuntu22.04" && "${GPU:-}" == "AMD" ]] || return 0
-
-    current_version=$(dkms --version 2>/dev/null | sed -n 's/^dkms-\(.*\)$/\1/p' || true)
-    if [[ -n "${current_version}" ]] && dpkg --compare-versions "${current_version}" ge 3.4.1; then
-        return 0
-    fi
-
-    rm -f "./${dkms_deb}"
-    download_and_verify "${dkms_url}" "${dkms_sha256}"
-    apt-get install -y "./${dkms_deb}"
-    rm -f "./${dkms_deb}"
-}
-
 configure_lustre_dkms_skip_artifact() {
     local module=$1
     local module_version=$2
@@ -54,27 +35,6 @@ configure_lustre_dkms_skip_artifact() {
     cat >> "${dkms_conf}" <<EOF
 # ${description}
 BUILD_EXCLUSIVE_KERNEL[${slot}]="^$"
-EOF
-}
-
-configure_lustre_dkms_lu20071_patch() {
-    local module=lustre-client
-    local module_version=$1
-    local kernel_header=/lib/modules/$(uname -r)/build/include/linux/timer.h
-    local dkms_conf=/etc/dkms/${module}-${module_version}.conf
-    local patch_file=${COMPONENT_DIR}/patches/lustre-client-lu-20071-timer-container-of.patch
-    local patch_dir=/etc/dkms/${module}/patches
-
-    # RHEL 9.8 kernels 5.14.0-687+ dropped from_timer(); LU-20071 rewires
-    # Lustre's cfs_from_timer wrapper to timer_container_of.
-    [[ -f "${kernel_header}" ]] || return 0
-    grep -q 'from_timer' "${kernel_header}" && return 0
-
-    mkdir -p "${patch_dir}"
-    cp "${patch_file}" "${patch_dir}/lu-20071-timer-container-of.patch"
-    mkdir -p "$(dirname "${dkms_conf}")"
-    cat >> "${dkms_conf}" <<'EOF'
-PATCH[0]="lu-20071-timer-container-of.patch"
 EOF
 }
 
@@ -125,7 +85,6 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # Pre-creating that conffile makes noninteractive dpkg stop at a prompt.
     apt-get install -y "${LUSTRE_CLIENT_PACKAGE}"
     if [[ $UBUNTU_VERSION == 22.04 ]]; then
-        install_cuda_dkms_3_4_1_for_jammy_amd
         configure_legacy_lustre_dkms_no_o2ib "${LUSTRE_VERSION}"
     else
         configure_lustre_dkms_no_o2ib_with_tr_workaround /etc/sysconfig/dkms-lustre
@@ -154,7 +113,6 @@ else
     configure_lustre_dkms_no_o2ib /etc/sysconfig/lustre
     configure_lustre_dkms_skip_artifact lustre-client "${LUSTRE_VERSION_UNDERSCORE}" 3 \
         "EL ko2iblnd is record 3; --with-o2ib=no intentionally skips it."
-    configure_lustre_dkms_lu20071_patch "${LUSTRE_VERSION_UNDERSCORE}"
     dnf install -y --disableexcludes=main --refresh "${LUSTRE_PACKAGES[@]}"
     check_dkms_status lustre-client
     LUSTRE_VERSION=${LUSTRE_VERSION_UNDERSCORE}

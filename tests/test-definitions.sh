@@ -127,6 +127,13 @@ function verify_hpcx_installation {
     fi
     
     module load mpi/hpcx
+    if [[ "$DISTRIBUTION" == "ubuntu26.04" ]]; then
+        ompi_info --version | grep -qE '^Open MPI v5\.'
+        check_exit_code "HPC-X uses Open MPI 5" "HPC-X did not report Open MPI 5"
+
+        pkg-config --atleast-version=5 pmix
+        check_exit_code "HPC-X uses PMIx 5" "HPC-X did not provide PMIx 5"
+    fi
     mpirun -np 2 --map-by ppr:2:node ${mpi_args} ${HPCX_OSU_DIR}/osu_latency
     check_exit_code "HPC-X" "Failed to run HPC-X"
     module unload mpi/hpcx
@@ -149,8 +156,7 @@ function verify_mvapich2_installation {
         # UCX transport: MV2_FORCE_HCA_TYPE=22 explicitly selects EDR
         mpiexec -np 2 -ppn 2 -env MV2_USE_SHARED_MEM=0 -env MV2_FORCE_HCA_TYPE=22 ${mvapich_omb_path}/osu_latency
     else
-        # OFI transport: disable CMA (process_vm_readv fails with ptrace_scope=1 on sibling processes)
-        mpiexec -np 2 -ppn 2 -env MPIR_CVAR_CH4_CMA_ENABLE=0 ${mvapich_omb_path}/osu_latency
+        mpiexec -np 2 -ppn 2 ${mvapich_omb_path}/osu_latency
     fi
     check_exit_code "MVAPICH ${VERSION_MVAPICH}" "Failed to run MVAPICH"
     module unload mpi/mvapich
@@ -159,12 +165,8 @@ function verify_mvapich2_installation {
 function verify_impi_2021_installation {
     check_exists "${MODULE_FILES_ROOT}/mpi/impi-2021"
 
-    # Use TCP on non-IB SKUs and Mellanox (mlx) on IB SKUs
-    local fi_provider="mlx"
-    if [[ "$(sku_network_mode)" == "no_rdma" ]]; then fi_provider="tcp"; fi
-    
     module load mpi/impi-2021
-    mpiexec -np 2 -ppn 2 -env FI_PROVIDER=${fi_provider} -env I_MPI_SHM=0 ${MPI_BIN}/IMB-MPI1 pingpong
+    mpiexec -np 2 -ppn 2 -env I_MPI_SHM=0 ${MPI_BIN}/IMB-MPI1 pingpong
     check_exit_code "Intel MPI 2021 ${VERSION_IMPI}" "Failed to run Intel MPI 2021"
     module unload mpi/impi-2021
 }
@@ -212,7 +214,11 @@ function verify_cuda_installation {
     fi
 
     # Verify the compilation of CUDA samples
-    /usr/local/cuda/samples/0_Introduction/mergeSort/mergeSort
+    if [[ -x /usr/local/cuda/samples/mergeSort ]]; then
+        /usr/local/cuda/samples/mergeSort
+    else
+        /usr/local/cuda/samples/0_Introduction/mergeSort/mergeSort
+    fi
     check_exit_code "CUDA Samples ${VERSION_CUDA}" "Failed to perform merge sort using CUDA Samples"
 }
 
@@ -245,7 +251,7 @@ function verify_nccl_installation {
         standard_nd40rs_v2 | standard_nd96*v4 | standard_nc*ads_a100_v4) mpirun -np 8 \
             --allow-run-as-root \
             --map-by ppr:8:node \
-            -x LD_LIBRARY_PATH=/usr/local/nccl-rdma-sharp-plugins/lib:$LD_LIBRARY_PATH \
+            -x LD_LIBRARY_PATH \
             -mca coll_hcoll_enable 0 \
             -x UCX_TLS=tcp \
             -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
@@ -258,7 +264,7 @@ function verify_nccl_installation {
         standard_nc80adis_h100_v5) mpirun -np 2 \
                 --allow-run-as-root \
                 --map-by ppr:2:node \
-                -x LD_LIBRARY_PATH=/usr/local/nccl-rdma-sharp-plugins/lib:$LD_LIBRARY_PATH \
+                -x LD_LIBRARY_PATH \
                 -mca coll_hcoll_enable 0 \
                 -x UCX_TLS=tcp \
                 -x CUDA_DEVICE_ORDER=PCI_BUS_ID \
@@ -276,7 +282,7 @@ function verify_nccl_installation {
         mpirun -np 4 \
             --allow-run-as-root \
             --map-by ppr:4:node \
-            -x LD_LIBRARY_PATH=/usr/local/nccl-rdma-sharp-plugins/lib:$LD_LIBRARY_PATH \
+            -x LD_LIBRARY_PATH \
             -mca coll_hcoll_enable 0 \
             -x UCX_TLS=rc \
             -x UCX_IB_GID_INDEX=0 \
@@ -313,7 +319,11 @@ function verify_rocm_installation {
     # Verify if ROCM is installed
     check_exists "/opt/rocm/"
 
-    amd_rocm_version=$(cat /opt/rocm/.info/version)
+    local rocm_prefix=/opt/rocm
+    if [[ "$DISTRIBUTION" == "ubuntu26.04" ]]; then
+        rocm_prefix=/opt/rocm/core
+    fi
+    amd_rocm_version=$(cat "$rocm_prefix/.info/version")
     check_exit_code "AMD ROCM version ${amd_rocm_version} found" "AMD ROCM not found"
 
     # Verify if AMD GPU driver exists
@@ -327,9 +337,9 @@ function verify_rccl_installation {
 
     amdgpumod=$(lsmod | grep "^amdgpu")
     check_exit_code "amdgpu driver is loaded" "No amdgpu driver"
-    
+
     case ${VMSIZE} in
-        standard_nd96isr_mi300x_v5) mpirun -np 8 \
+        standard_nd96isr_mi300x_v5) timeout 600 mpirun -np 8 \
             --allow-run-as-root \
             --map-by ppr:8:node \
             -x LD_LIBRARY_PATH=/opt/rccl/lib:$LD_LIBRARY_PATH \
@@ -348,10 +358,10 @@ function verify_rccl_installation {
 # should gate on validation_mode).
 #
 # Motivation: the legacy `sed -i "$ s/$/ PKG/" /etc/dnf/dnf.conf` pattern
-# (see utils/utilities.sh::dnf_pin_packages) appended package globs onto
-# the last line of dnf.conf (e.g. `skip_if_unavailable=False`), which dnf
+# appended package globs onto the last line of dnf.conf (e.g.
+# `skip_if_unavailable=False`), which dnf
 # treats as an `Invalid configuration value` *warning* and silently
-# disables the pin -- letting `yum update` upgrade nvidia-fabricmanager
+# disables the pin -- letting `dnf update` upgrade nvidia-fabricmanager
 # out of sync with the driver. This check fails the build if dnf can't
 # parse its own config.
 function verify_dnf_conf {
@@ -424,8 +434,17 @@ function verify_gcc_installation {
 function verify_aocl_installation {
     # verify AMD modulefiles
     check_exists "${MODULE_FILES_ROOT}/amd/aocl"
+    check_exists "/opt/amd/MT/lib/"
+    check_exists "/opt/amd/MT/include/"
+    check_exists "/opt/amd/ST/lib/"
+    check_exists "/opt/amd/ST/include/"
     check_exists "/opt/amd/lib/"
     check_exists "/opt/amd/include/"
+
+    readlink -f /opt/amd/lib | grep -q "^/opt/amd/MT/lib"
+    check_exit_code "AOCL default library path uses MT" "AOCL default library path does not use MT"
+    readlink -f /opt/amd/include | grep -q "^/opt/amd/MT/include"
+    check_exit_code "AOCL default include path uses MT" "AOCL default include path does not use MT"
 }
 
 function verify_aocc_installation {
@@ -499,7 +518,7 @@ function verify_pssh_installation {
     case ${ID} in
         ubuntu) dpkg -l | grep pssh;;
         almalinux|rocky|rhel) dnf list installed | grep pssh;;
-        azurelinux) sudo tdnf list installed | grep pssh;;
+        azurelinux) sudo dnf list installed | grep pssh;;
         * ) ;;
     esac
     check_exit_code "PSSH Installed" "PSSH not installed!"
@@ -515,7 +534,7 @@ function verify_dcgm_installation {
     case ${ID} in
         ubuntu) dpkg -l | grep datacenter-gpu-manager;;
         almalinux|rocky|rhel) dnf list installed | grep datacenter-gpu-manager;;
-        azurelinux) sudo tdnf list installed | grep datacenter-gpu-manager;;
+        azurelinux) sudo dnf list installed | grep datacenter-gpu-manager;;
         * ) ;;
     esac
     check_exit_code "DCGM Installed" "DCGM not installed!"
@@ -552,9 +571,11 @@ function verify_sunrpc_tcp_settings_service {
 }
 
 function verify_azure_persistent_rdma_naming_service {
-    # Check if the azure persistent rdma naming service is active
-    systemctl is-active --quiet azure_persistent_rdma_naming
-    check_exit_code "Azure persistent rdma naming service is active" "Azure persistent rdma naming service is inactive/dead!"
+    systemctl is-enabled --quiet azure_persistent_rdma_naming.service
+    check_exit_code "Azure persistent RDMA naming service is enabled" "Azure persistent RDMA naming service is not enabled!"
+
+    systemctl is-active --quiet azure_persistent_rdma_naming.timer
+    check_exit_code "Azure persistent RDMA naming timer is active" "Azure persistent RDMA naming timer is inactive/dead!"
 }
 
 function verify_nvbandwidth_setup {

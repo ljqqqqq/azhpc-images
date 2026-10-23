@@ -7,19 +7,25 @@ source ${UTILS_DIR}/utilities.sh
 # calls to Microsoft endpoints.
 $COMPONENT_DIR/install_microsoft_tls_root_g2.sh
 
-# Setup microsoft packages repository for moby
-# Download the repository configuration package
-curl https://packages.microsoft.com/config/rhel/9/prod.repo > ./microsoft-prod.repo
+# Setup Microsoft package repositories. Rocky uses the native Rocky repo, while
+# Moby packages currently come from the RHEL repo under a distinct repo ID.
+curl https://packages.microsoft.com/config/rocky/9/prod.repo > ./microsoft-prod.repo
+sed -i '/^\[/a priority=10' ./microsoft-prod.repo
+curl https://packages.microsoft.com/config/rhel/9/prod.repo > ./microsoft-rhel-prod.repo
+sed -i 's/^\[packages-microsoft-com-prod\]/[packages-microsoft-com-rhel-prod]/' ./microsoft-rhel-prod.repo
+sed -i 's/^name=Microsoft Production/name=Microsoft RHEL Production/' ./microsoft-rhel-prod.repo
+sed -i '/^\[/a priority=20' ./microsoft-rhel-prod.repo
 # Copy the generated list to the sources.list.d directory
+grep -lE '^\[(packages-microsoft-com-prod|packages-microsoft-com-rhel-prod)\]' /etc/yum.repos.d/*.repo 2>/dev/null | xargs -r sudo rm -f
 sudo cp ./microsoft-prod.repo /etc/yum.repos.d/
+sudo cp ./microsoft-rhel-prod.repo /etc/yum.repos.d/
 
 dnf repolist
 
-# Install wget, net-tools, python3.12, and jq early (needed for kernel downloads and utilities)
+# Install wget, net-tools, and python3.12 early (needed for kernel downloads and utilities)
 sudo dnf install -y wget \
                net-tools \
-               python3.12 \
-               jq
+               python3.12
 
 # Install Kernel dependencies
 # Rocky 9.x kernel-devel installation requires complex fallback logic due to:
@@ -75,6 +81,8 @@ sudo alternatives --set python3 /usr/bin/python3.9
 # Install EPEL repository
 dnf install -y epel-release
 
+dnf install -y dnf-plugins-core
+
 # Enable CRB (CodeReady Builder) repository for Rocky 9
 # Required for CycleCloud Slurm installer compatibility (Rocky 8 uses 'powertools', Rocky 9 uses 'crb')
 dnf config-manager --set-enabled crb
@@ -128,6 +136,7 @@ dnf install -y numactl \
     tcsh \
     gcc-gfortran \
     perl \
+    azure-vm-utils \
     libdrm-devel \
     dos2unix \
     azcopy \
@@ -144,7 +153,9 @@ dnf install -y kernel-abi-stablelists
 ## Install EPEL packages (pssh, dkms, subunit, subunit-devel)
 dnf install -y pssh dkms subunit subunit-devel
 
-echo ib_ipoib | sudo tee /etc/modules-load.d/ib_ipoib.conf
+if sku_uses_ipoib; then
+    echo ib_ipoib | sudo tee /etc/modules-load.d/ib_ipoib.conf
+fi
 
 # copy kvp client file
 $COMPONENT_DIR/copy_kvp_client.sh

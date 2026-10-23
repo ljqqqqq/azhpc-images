@@ -3,11 +3,17 @@ set -ex
 
 source ${UTILS_DIR}/utilities.sh
 
+if [[ "$DISTRIBUTION" == "ubuntu26.04" ]]; then
+    echo "Ubuntu 26.04 uses the PMIx 5 stack bundled with HPC-X."
+    exit 0
+fi
+
 pmix_metadata=$(get_component_config "pmix")
 PMIX_VERSION=$(jq -r '.version' <<< $pmix_metadata)
 
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     UBUNTU_VERSION=$(cat /etc/os-release | grep VERSION_ID | cut -d= -f2 | cut -d\" -f2)
+
     if [ $UBUNTU_VERSION == 24.04 ]; then
         REPO=slurm-ubuntu-noble
         SIGNED_BY="/usr/share/keyrings/microsoft-prod.gpg"
@@ -23,7 +29,7 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     ## use generic ubuntu marketplace image then this package sets up the right gpg keys for PMC.
     if [ ! -e /etc/apt/sources.list.d/microsoft-prod.list ]; then
         curl -sSL -O https://packages.microsoft.com/config/ubuntu/$UBUNTU_VERSION/packages-microsoft-prod.deb
-        dpkg -i packages-microsoft-prod.deb
+        apt install -y ./packages-microsoft-prod.deb
         rm packages-microsoft-prod.deb
     fi
     apt update
@@ -32,14 +38,14 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # '--allow-change-held-packages' flag.
     apt-mark hold pmix=${PMIX_VERSION} libevent-dev libhwloc-dev # libmunge-dev
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
-    tdnf -y install pmix pmix-devel pmix-tools
-    tdnf -y install hwloc-devel libevent-devel munge-devel
+    dnf -y install pmix pmix-devel pmix-tools
+    dnf -y install hwloc-devel libevent-devel munge-devel
     if [ "$ARCHITECTURE" = "aarch64" ]; then
         postfix="aarch64"
     else
         postfix="x86_64"
     fi
-    PMIX_VERSION=$(tdnf list installed | grep -i pmix.${postfix} | sed 's/.*[[:space:]]\([0-9.]*-[0-9]*\)\..*/\1/')
+    PMIX_VERSION=$(dnf list installed | grep -i pmix.${postfix} | sed 's/.*[[:space:]]\([0-9.]*-[0-9]*\)\..*/\1/')
 else
     # RHEL-family: AlmaLinux, Rocky Linux, RHEL, etc.
     OS_MAJOR_VERSION=$(sed -n 's/^VERSION_ID="\([0-9]\+\).*/\1/p' /etc/os-release)
@@ -51,13 +57,15 @@ else
         rm packages-microsoft-prod.rpm
     fi
 
-    if [[ $OS_MAJOR_VERSION == "9" ]]; then 
+    if [[ $DISTRIBUTION == rhel* ]]; then
+        dnf config-manager --set-enabled codeready-builder-for-rhel-${OS_MAJOR_VERSION}-${ARCHITECTURE}-rhui-rpms
+    elif [[ $OS_MAJOR_VERSION == "9" ]]; then
         dnf config-manager --set-enabled crb
     elif  [[ $OS_MAJOR_VERSION == "8" ]]; then
         dnf config-manager --set-enabled powertools
     fi
-    yum update -y
-    yum -y install pmix-${PMIX_VERSION}.el${OS_MAJOR_VERSION} hwloc-devel libevent-devel munge-devel
+    dnf update -y
+    dnf -y install pmix-${PMIX_VERSION}.el${OS_MAJOR_VERSION} hwloc-devel libevent-devel munge-devel
 fi
 
 write_component_version "PMIX" ${PMIX_VERSION}

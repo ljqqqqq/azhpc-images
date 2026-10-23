@@ -1,25 +1,59 @@
 trigger: none
 
+# Deliberately no path filters: a required check has to report on every PR to master.
 pr:
-- master
+  autoCancel: true
+  branches:
+    include:
+    - master
 
-pool: 
+parameters:
+- name: scanner_pipeline_id
+  displayName: HPC Image SBOM Scanner pipeline ID
+  type: number
+  default: 90
+- name: scanner_branch
+  displayName: hpc-image-val scanner branch
+  type: string
+  default: master
+- name: poll_interval_seconds
+  displayName: Scanner poll interval in seconds
+  type: number
+  default: 60
+- name: existing_scanner_run_id
+  displayName: Existing scanner run ID (optional)
+  type: string
+  default: " "
+
+pool:
   name: 1ES-hosted-pool-scrub1
 
 jobs:
-- job: queue_azdo
-  timeoutInMinutes: 360
+- job: pr_gate
+  displayName: PR gate
+  timeoutInMinutes: 43200
+  cancelTimeoutInMinutes: 5
   steps:
-  - bash: |
-      echo $(System.PullRequest.PullRequestNumber)
-    displayName: Print PR Num
+  - checkout: self
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.13'
+      addToPath: true
+
+  - bash: python -m pip install requests
+    displayName: Install Python packages
 
   - task: Bash@3
+    displayName: Queue and wait for PR image builds
     inputs:
-      targetType: 'filePath'
-      filePath: './azure-pipelines/queue_ado.sh'
-      failOnStderr: true
+      targetType: inline
+      script: exec python azure-pipelines/queue_scanner.py
+      failOnStderr: false
     env:
-      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
       PR_NUM: $(System.PullRequest.PullRequestNumber)
-    displayName: Queue Validation Build and Monitor Status
+      SCANNER_PIPELINE_ID: ${{ parameters.scanner_pipeline_id }}
+      SCANNER_BRANCH: ${{ parameters.scanner_branch }}
+      POLL_INTERVAL_SECONDS: ${{ parameters.poll_interval_seconds }}
+      EXISTING_SCANNER_RUN_ID: ${{ parameters.existing_scanner_run_id }}
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
