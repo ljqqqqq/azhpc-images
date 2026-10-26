@@ -5,17 +5,52 @@ diff --git a/src/os/linux.cc b/src/os/linux.cc
  #include "checks.h"
 +#include "proxy.h"
  #include "utils.h"
-@@ -609,3 +610,6 @@ ncclResult_t ncclOsNvmlOpen(ncclOsLibraryHandle* handle) {
+@@ -28,3 +29,5 @@
+ #include <sys/resource.h>
+ #include <sys/syscall.h>
++#include <sys/stat.h>
++#include <time.h>
+ #include <atomic>
+@@ -609,3 +612,34 @@ ncclResult_t ncclOsNvmlOpen(ncclOsLibraryHandle* handle) {
  #include <stdlib.h>
 -
 +
 +// Temporary diagnostic that only logs the proxy ops-pool shared-memory object.
 +static constexpr size_t ncclShmDiagTargetSize = sizeof(struct ncclProxyOpsPool);
 +
++static void ncclShmDiagLogContext(const char* event, const char* shmPath, int fd, int observedErrno) {
++  int savedErrno = errno;
++  struct timespec timestamp = {};
++  unsigned long long monotonicNs = 0;
++  if (clock_gettime(CLOCK_MONOTONIC, &timestamp) == 0) {
++    monotonicNs = (unsigned long long)timestamp.tv_sec * 1000000000ULL + (unsigned long long)timestamp.tv_nsec;
++  }
++
++  struct stat mountNsStat = {};
++  int mountNsResult = stat("/proc/self/ns/mnt", &mountNsStat);
++  int mountNsErrno = mountNsResult == 0 ? 0 : errno;
++
++  struct stat shmDirStat = {};
++  int shmDirResult = stat("/dev/shm", &shmDirStat);
++  int shmDirErrno = shmDirResult == 0 ? 0 : errno;
++
++  struct stat objectStat = {};
++  int objectResult = fd >= 0 ? fstat(fd, &objectStat) : stat(shmPath, &objectStat);
++  int objectErrno = objectResult == 0 ? 0 : errno;
++
++  WARN("NCCL_SHM_DIAG CONTEXT event=%s path=%s observed_errno=%d mono_ns=%llu mnt_ns_rc=%d mnt_ns_errno=%d mnt_ns_ino=%llu shm_dir_rc=%d shm_dir_errno=%d shm_dir_dev=%llu shm_dir_ino=%llu object_rc=%d object_errno=%d object_dev=%llu object_ino=%llu",
++       event, shmPath, observedErrno, monotonicNs,
++       mountNsResult, mountNsErrno, (unsigned long long)mountNsStat.st_ino,
++       shmDirResult, shmDirErrno, (unsigned long long)shmDirStat.st_dev, (unsigned long long)shmDirStat.st_ino,
++       objectResult, objectErrno, (unsigned long long)objectStat.st_dev, (unsigned long long)objectStat.st_ino);
++  errno = savedErrno;
++}
++
  void ncclOsShmHandleInit(ncclShmDescriptor shmDesc, char* shmPath, size_t shmSize, size_t realShmSize,
-@@ -688,7 +692,18 @@ ncclResult_t ncclOsShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize,
+@@ -688,7 +722,19 @@ ncclResult_t ncclOsShmOpen(char* shmPath, size_t shmPathSize, size_t shmSize,
      *(int*)(hptr + shmSize) = refcount;
 +    if (shmSize == ncclShmDiagTargetSize) {
++      ncclShmDiagLogContext("CREATE", shmPath, fd, 0);
 +      WARN("NCCL_SHM_DIAG CREATE_OK path=%s size=%zu initial_refcount=%d", shmPath, shmSize, refcount);
 +    }
    } else {
@@ -34,7 +69,19 @@ diff --git a/src/os/linux.cc b/src/os/linux.cc
 +      if (unlinkResult != 0) {
 +        INFO(NCCL_ALLOC, "unlink shared memory %s failed, error: %s (%d)", shmPath, strerror(unlinkErrno), unlinkErrno);
        }
-@@ -731,4 +746,9 @@ ncclResult_t ncclOsShmClose(struct ncclShmHandleInternal* handle) {
+@@ -711,6 +757,11 @@ exit:
+   *handle = tmphandle;
+   return ret;
+ fail:
++  int failErrno = errno;
++  if (!create && shmSize == ncclShmDiagTargetSize) {
++    ncclShmDiagLogContext("ATTACH_FAIL", shmPath, fd, failErrno);
++  }
++  errno = failErrno;
+   WARN("Error while %s shared memory segment %s (size %ld), error: %s (%d)", create ? "creating" : "attaching to",
+        shmPath, shmSize, strerror(errno), errno);
+   if (tmphandle) {
+@@ -731,4 +782,9 @@ ncclResult_t ncclOsShmClose(struct ncclShmHandleInternal* handle) {
        if (handle->shmPath != NULL && handle->refcount != NULL && *handle->refcount > 0) {
 -        if (unlink(handle->shmPath) != 0) {
 -          WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
@@ -46,7 +93,7 @@ diff --git a/src/os/linux.cc b/src/os/linux.cc
 +        if (unlinkResult != 0) {
 +          WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(unlinkErrno), unlinkErrno);
            ret = ncclSystemError;
-@@ -755,4 +775,9 @@ ncclResult_t ncclOsShmUnlink(struct ncclShmHandleInternal* handle) {
+@@ -755,4 +811,9 @@ ncclResult_t ncclOsShmUnlink(struct ncclShmHandleInternal* handle) {
      if (handle->shmPath != NULL && handle->refcount != NULL && *handle->refcount > 0) {
 -      if (unlink(handle->shmPath) != 0) {
 -        WARN("unlink shared memory %s failed, error: %s (%d)", handle->shmPath, strerror(errno), errno);
