@@ -162,6 +162,10 @@ $COMPONENT_DIR/disable_cloudinit.sh
 # SKU Customization
 $COMPONENT_DIR/setup_sku_customizations.sh
 
+# Upgrade packages with publishing-blocking CVEs whose fixes are available in
+# the standard Ubuntu repositories. This must run before the vulnerability scan.
+$COMPONENT_DIR/upgrade_packages_for_cve.sh
+
 # scan vulnerabilities using Trivy
 $COMPONENT_DIR/trivy_scan.sh
 
