@@ -31,4 +31,11 @@ if [[ -f ../cmake/InstallSamples.cmake ]]; then
 else
 	mv -vT ./Samples /usr/local/cuda-${CUDA_DRIVER_VERSION}/samples
 fi
+if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
+	# segmentationTreeThrust requires its test and reference PPM assets at
+	# runtime. The CUDA Samples CMake install does not install these files.
+	install -m 0644 \
+		../cpp/2_Concepts_and_Techniques/segmentationTreeThrust/data/*.ppm \
+		/usr/local/cuda-${CUDA_DRIVER_VERSION}/samples/
+fi
 popd
