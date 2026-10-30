@@ -1096,7 +1096,7 @@
             "aarch64": {
                 "azure_vm_regular": {
                     "nvidia_vr200": {
-                        "version": "1:4.7.0-2"
+                        "version": "1:4.7.1-2"
                     }
                 },
                 "version": "1:4.6.1-1"
