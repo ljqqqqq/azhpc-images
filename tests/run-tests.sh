@@ -230,15 +230,16 @@ function set_vm_properties {
     if [[ -z "${VMSIZE:-}" ]]; then
         local metadata_endpoint="http://169.254.169.254/metadata/instance?api-version=2019-06-04"
         local vm_size=$(curl -H Metadata:true $metadata_endpoint | jq -r ".compute.vmSize")
-        export VMSIZE=$(echo "$vm_size" | awk '{print tolower($0)}')
+        export VMSIZE="$vm_size"
     fi
+    export VMSIZE="${VMSIZE,,}"
     # Derive SKU_FAMILY from VMSIZE if not already set by the caller (e.g. via
     # set_properties.sh). This ensures SKU_FAMILY is always available to test
     # functions like verify_common_components regardless of caller environment.
     if [[ -z "${SKU_FAMILY:-}" ]]; then
         if ! set_sku_family_hook; then
             case "${VMSIZE}" in
-                standard_nd128is*_gb[2-3]00_v6|standard_nd128isr_vr200_v6|nd144isr_eth_gb200_metal_v6|nd144isr_eth_vr200_metal_v6) export SKU_FAMILY="nvlink_rackscale_family" ;;
+                standard_nd128is*_gb[2-3]00_v6|standard_nd168isr_vr_nvl72_v7|nd144isr_eth_gb200_metal_v6|nd144isr_eth_vr200_metal_v6) export SKU_FAMILY="nvlink_rackscale_family" ;;
                 standard_nc*_rtxpro6000bse_v6)  export SKU_FAMILY="ncv6" ;;
             esac
         fi

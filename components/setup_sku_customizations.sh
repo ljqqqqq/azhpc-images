@@ -31,7 +31,7 @@ else
         standard_hb176*v4)                topoFamily="hbv4" ;;
         standard_nc80adis_h100_v5)        topoFamily="ncv5" ;;
         standard_nd96is*_h[1-2]00_v5)    topoFamily="ndv5" ;;
-        standard_nd128is*_gb[2-3]00_v6|standard_nd128isr_vr200_v6) topoFamily="nvlink_rackscale_family" ;;
+        standard_nd128is*_gb[2-3]00_v6|standard_nd168isr_vr_nvl72_v7) topoFamily="nvlink_rackscale_family" ;;
         standard_nc*_rtxpro6000bse_v6)    topoFamily="ncv6" ;;
         *) topoFamily="" ;;
     esac
