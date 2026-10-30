@@ -121,7 +121,14 @@ configure_gb200_partuuid() {
 ####
 configure_nvlink_rackscale_kernel() {
     if [[ "${TARGET_NODE_TYPE:-azure_vm_regular}" != baremetal_* ]]; then
-        sed -i '/^GRUB_CMDLINE_LINUX=/ s/"$/ iommu.passthrough=1 irqchip.gicv3_nolpi=y arm_smmu_v3.disable_msipolling=1 init_on_alloc=0 net.ifnames=0"/' /etc/default/grub.d/50-cloudimg-settings.cfg
+        local boot_parameters="iommu.passthrough=1 arm_smmu_v3.disable_msipolling=1 init_on_alloc=0 net.ifnames=0"
+        # VR200 requires GICv3 LPIs for GPU MSI-X. Keep the no-LPI setting
+        # only for GB targets.
+        if [[ "${GPU_SKU:-}" == GB* ]]; then
+            boot_parameters+=" irqchip.gicv3_nolpi=y"
+        fi
+        sed -i "/^GRUB_CMDLINE_LINUX=/ s/\"$/ ${boot_parameters}\"/" \
+            /etc/default/grub.d/50-cloudimg-settings.cfg
     else
         echo "FW dma fix"
         sudo sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="efi=disable_early_pci_dma"/g' /etc/default/grub
