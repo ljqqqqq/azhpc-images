@@ -60,11 +60,11 @@
             "aarch64": {
                 "azure_vm_regular": {
                     "nvidia_vr200": {
-                        "version": "3.3.1",
-                        "package_version": "3.3.1-057000",
+                        "version": "3.3.3",
+                        "package_version": "3.3.3-021000",
                         "source": "private",
-                        "repo_file": "doca-host_3.3.1-057000-26.01-ubuntu2604_arm64.deb",
-                        "sha256": "8ce9f35ee6d03ec4cba02715600a7dfa2dda8101a27c3c4137fd17a6c22626e9"
+                        "repo_file": "doca-host_3.3.3-021000-26.01-ubuntu2604_arm64.deb",
+                        "sha256": "36212c5967e71454c027cd18641f7ee3c7671276fd6e3f48fe6d472c5d219887"
                     }
                 },
                 "version": "3.5.0",
@@ -473,14 +473,14 @@
                 "azure_vm_regular": {
                     "nvidia_vr200": {
                         "driver": {
-                            "version": "620.47-1ubuntu1",
+                            "version": "620.62-1ubuntu1",
                             "major_version": "620",
                             "source": "private",
-                            "repo_file": "nvidia-driver-local-repo-ubuntu2604-620.47_1.0-1_arm64.deb",
-                            "sha256": "f0f1ad887d43534fc53312770b9b9086ddb97a083bc177262d6948d789d422d9"
+                            "repo_file": "nvidia-driver-local-repo-ubuntu2604-620.62_1.0-1_arm64.deb",
+                            "sha256": "2d47e3c46e8e978a45ce49b288e9f28bfe4d4fd556888aeb4cc04425fd421805"
                         },
                         "imex": {
-                            "version": "2.0.0.rel35-1"
+                            "version": "2.0.0.rel47-1"
                         }
                     }
                 },
@@ -663,7 +663,7 @@
                             "distribution": "ubuntu2604",
                             "source": "private",
                             "repo_file": "cuda-repo-ubuntu2604-13-5-local_13.5.0-1_arm64.deb",
-                            "sha256": "0d491e933ffc50a92cda86072fff34bb6890507c425fa76c67a5e7a9e87afa34"
+                            "sha256": "e6ceec78bfbd72d37377527ee2754ede597e0e3c9b16187a19181de3ef63cfb2"
                         },
                         "samples": {
                             "version": "13.4",
@@ -1010,10 +1010,10 @@
             "aarch64": {
                 "azure_vm_regular": {
                     "nvidia_vr200": {
-                        "version": "2.31.2gr100+0.8.3-1+cuda13.5",
+                        "version": "2.32.4gr100+1.0.1-1+cuda13.5",
                         "source": "private",
-                        "runtime_sha256": "a4b74869bc3c44c633e51877b5c0f493e4694a6e1bf50d519053be1d0203b685",
-                        "dev_sha256": "def266f0d715a9aa68d0a518772edcffb6db998ae975b89fbd99a8af5a4cfabf",
+                        "runtime_sha256": "6fc97ce78254adc07a78b36283ddd0cd5983b9307dfbcb0d2dbab759a3513867",
+                        "dev_sha256": "ecb755bc8bd7c19a4e564ab2225f32ef3578ce2a57cbd76339dce3408424b0d5",
                         "rdmasharpplugins": {
                             "branch": "master",
                             "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
@@ -1061,10 +1061,10 @@
             "aarch64": {
                 "azure_vm_regular": {
                     "nvidia_vr200": {
-                        "version": "0.10_v2",
+                        "version": "0.10_v6",
                         "source": "private",
-                        "binary_file": "nvbandwidth_main_0.10_MPI",
-                        "sha256": "60e2a78206918618eb1a9696c5f6509ffb763315ef6ea706ac2ffae777c51fb6"
+                        "binary_file": "nvbandwidth_main_0.10_v6",
+                        "sha256": "aaee1a7153a25339833b72e01f29ec5ccbe0801fc3db36523e092cbbf1bed3d2"
                     }
                 }
             }

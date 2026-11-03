@@ -136,7 +136,7 @@ build {
   // Placeholder, will check whether VR200 really needs internal bits
   provisioner "shell-local" {
     name           = "download and extract Azure Linux prebuilts for GB200"
-    except         = (!var.skip_hpc && !local.refresh_mode && local.os_family == "azurelinux" && local.nvlink_rackscale) ? [] : ["azure-arm.hpc"]
+    except         = (!var.skip_hpc && local.os_family == "azurelinux" && local.nvlink_rackscale) ? [] : ["azure-arm.hpc"]
     inline_shebang = var.default_inline_shebang
     inline = [
       "if [[ -z \"${var.internal_bits_container_name}\" || -z \"${var.internal_bits_blob_name}\" || \"${var.internal_bits_container_name}\" =~ ^[Nn]one$ || \"${var.internal_bits_blob_name}\" =~ ^[Nn]one$ ]]; then echo 'Skipping internal bits download: INTERNAL_BITS_CONTAINER_NAME or INTERNAL_BITS_BLOB_NAME is unset/None'; exit 0; fi",
@@ -148,7 +148,7 @@ build {
 
   provisioner "shell-local" {
     name           = "(1P specific) download and extract GB/VR prebuilts"
-    except         = (var.enable_first_party_specifics && !var.skip_hpc && !local.refresh_mode && local.os_family == "ubuntu" && local.nvlink_rackscale) ? [] : ["azure-arm.hpc"]
+    except         = (var.enable_first_party_specifics && !var.skip_hpc && local.os_family == "ubuntu" && local.nvlink_rackscale) ? [] : ["azure-arm.hpc"]
     inline_shebang = var.default_inline_shebang
     inline = [
       "if [[ -z \"${var.internal_bits_container_name}\" || -z \"${var.internal_bits_blob_name}\" || \"${var.internal_bits_container_name}\" =~ ^[Nn]one$ || \"${var.internal_bits_blob_name}\" =~ ^[Nn]one$ ]]; then echo 'Skipping internal bits download: INTERNAL_BITS_CONTAINER_NAME or INTERNAL_BITS_BLOB_NAME is unset/None'; exit 0; fi",
@@ -237,15 +237,6 @@ build {
   }
 
   provisioner "shell" {
-    name            = "(Refresh mode) Regenerate component_versions.txt from installed packages"
-    except          = (local.refresh_mode && !var.skip_hpc && !local.skip_prerequisites) ? [] : ["azure-arm.hpc"]
-    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
-    inline = [
-      "cd /home/${local.ssh_username}/azhpc-images/components; bash refresh_component_versions.sh ${local.gpu_platform}",
-    ]
-  }
-
-  provisioner "shell" {
     name            = "Run extra fix-up script"
     except          = local.run_extra_provision_script ? [] : ["azure-arm.hpc"]
     execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
@@ -254,6 +245,7 @@ build {
       "GPU_SKU=${local.gpu_sku}",
       "TARGET_NODE_TYPE=${local.target_node_type}",
       "REFRESH_MODE=${local.refresh_mode}",
+      "IMAGE_EVIDENCE_RUN_NAME=${local.image_version}",
     ]
     # Generic hook for one-off in-place-refresh fix-ups (e.g. disabling a
     # service). The specific script is provided via extra_provision_script and
@@ -265,6 +257,15 @@ build {
       "echo \"Running extra fix-up script: $SCRIPT_PATH\"",
       "if [[ ! -f \"$SCRIPT_PATH\" ]]; then echo \"ERROR: extra provisioning script not found: $SCRIPT_PATH\"; exit 1; fi",
       "bash \"$SCRIPT_PATH\"",
+    ]
+  }
+
+  provisioner "shell" {
+    name            = "(Refresh mode) Regenerate component_versions.txt from installed packages"
+    except          = (local.refresh_mode && !var.skip_hpc && !local.skip_prerequisites) ? [] : ["azure-arm.hpc"]
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash '{{ .Path }}'"
+    inline = [
+      "cd /home/${local.ssh_username}/azhpc-images/components; bash refresh_component_versions.sh ${local.gpu_platform}",
     ]
   }
 

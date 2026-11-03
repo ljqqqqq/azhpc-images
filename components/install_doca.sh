@@ -208,6 +208,7 @@ PIN
         install_hpcx_doca_ofed_deps_apt_marker
     fi
     apt-get -y install doca-ofed
+    DOCA_VERSION=$(dpkg-query -W -f='${Version}' doca-ofed | sed 's/-.*//')
     check_dkms_status mlnx-ofed-kernel iser isert srp
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     download_and_verify $DOCA_URL $DOCA_SHA256
