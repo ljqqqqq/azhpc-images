@@ -64,9 +64,32 @@ fi
 }
 echo 'CUDA sample executables and segmentationTreeThrust data are present.'
 
-# write_component_version in utils normalizes manifest keys, including inherited
-# entries. Deploy the checkout's original tests for direct upgrades as well;
-# Packer repeats this copy after its extra-script hook.
+# Keep a read-side fallback for manifests that have not passed through the new
+# utils writer. Patch only the VM checkout, then deploy to /opt/azurehpc/test.
+# Packer copies from the same checkout later, so it retains this temporary fix.
+# The systemd checks in test-definitions.sh remain unchanged.
+python3 - "$AZHPC_IMAGES_TEST_DIR" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+runner = Path(sys.argv[1]) / "run-tests.sh"
+source = runner.read_text()
+function = r'''function set_component_versions {
+    local component_versions_file=$HPC_ENV/component_versions.txt
+    local component_versions component
+    component_versions=$(jq -r 'to_entries[] | "VERSION_\(.key | gsub("[^A-Za-z0-9_]"; "_"))=\(.value)"' "$component_versions_file") || return
+    echo "Component versions: $component_versions"
+    while IFS= read -r component; do
+        [[ -z "$component" ]] || export "$component"
+    done <<< "$component_versions"
+}'''
+source, count = re.subn(r"(?ms)^function set_component_versions \{\n.*?^\}",
+                        lambda _: function, source, count=1)
+if count != 1:
+    raise SystemExit("ERROR: could not locate set_component_versions in VM test runner")
+runner.write_text(source)
+PY
 install -d /opt/azurehpc/test
 cp "${AZHPC_IMAGES_TEST_DIR}/"*.* /opt/azurehpc/test/
-echo 'Refreshed VM tests from checkout; original runner and systemd checks retained.'
+echo 'Refreshed VM tests: legacy version export compatibility; original systemd checks retained.'

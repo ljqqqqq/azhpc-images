@@ -61,7 +61,6 @@ class ImageFixesTest(unittest.TestCase):
                             lambda match: str(self.root) + match[0], source)
             self.put("repo/" + file, source)
         self.original_definitions = (self.root / "repo/tests/test-definitions.sh").read_bytes()
-        self.original_runner = (self.root / "repo/tests/run-tests.sh").read_bytes()
         self.unit = self.put("etc/systemd/system/nvidia-persistenced.service",
                              '[Service]\nPIDFile=/var/run/nvidia-persistenced/nvidia-persistenced.pid\n'
                              'ExecStopPost=/bin/rm -rf /var/run/nvidia-persistenced\nRestart=on-failure\n', 0o640)
@@ -157,10 +156,35 @@ class ImageFixesTest(unittest.TestCase):
         self.assertEqual(os.readlink(self.mask), "/dev/null")
         self.assertIn("/var/run/nvidia-persistenced", self.unit.read_text())
 
-    def test_test_runner_is_deployed_without_rewriting_source(self):
+    def test_runtime_export_handles_legacy_keys_without_running_the_utils_writer(self):
+        value = "$(touch " + str(self.root / "injected") + ")"
+        original = json.dumps({"NCCL-RDMA_SHARP_PLUGIN": "commit",
+                               "NCCL-RDMA_SHARP_PLUGIN_REPO_REF": value,
+                               "NCCL_TESTS_REPO_REF": "master"})
+        manifest = self.put("opt/azurehpc/component_versions.txt", original)
         self.assert_success(self.run_fixes())
-        self.assertEqual((self.root / "repo/tests/run-tests.sh").read_bytes(), self.original_runner)
-        self.assertEqual((self.root / "opt/azurehpc/test/run-tests.sh").read_bytes(), self.original_runner)
+        runner = self.root / "repo/tests/run-tests.sh"
+        deployed = self.root / "opt/azurehpc/test/run-tests.sh"
+        # A later Packer copy must retain the compatibility patch too.
+        shutil.copyfile(runner, deployed)
+        source = deployed.read_text()
+        function = source[source.index("function set_component_versions {"):source.index("function set_module_files_path {")]
+        result = subprocess.run(["bash", "-euc", function + '\nset_component_versions\n'
+                                 '[[ "$VERSION_NCCL_RDMA_SHARP_PLUGIN" == commit ]]\n'
+                                 '[[ "$VERSION_NCCL_RDMA_SHARP_PLUGIN_REPO_REF" == "$EXPECTED_REF" ]]\n'
+                                 '[[ "$VERSION_NCCL_TESTS_REPO_REF" == master ]]\n'],
+                                env=dict(self.env, HPC_ENV=str(manifest.parent), EXPECTED_REF=value),
+                                capture_output=True, text=True)
+        self.assert_success(result)
+        self.assertEqual(manifest.read_text(), original)
+        self.assertFalse((self.root / "injected").exists())
+
+    def test_unrecognized_test_runner_fails_before_deploying_it(self):
+        self.put("repo/tests/run-tests.sh", "#!/bin/bash\n# no version loader\n")
+        result = self.run_fixes()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("could not locate set_component_versions", result.stderr)
+        self.assertEqual((self.root / "opt/azurehpc/test/run-tests.sh").read_text(), "old runner\n")
 
     def test_packer_copy_keeps_original_unit_checks_after_unmask(self):
         vendor = self.put("usr/lib/systemd/system/vendor.service", "[Service]\nExecStart=/bin/true\n")
