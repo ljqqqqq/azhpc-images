@@ -60,21 +60,34 @@ get_component_config(){
 # 			  (2) Version
 ############################################################################
 write_component_version(){
-    component=$1
-    version=$2
+    local component=$1 version=$2
+    local install_dir="/opt/azurehpc"
+    local component_versions_json="${install_dir}/component_versions.txt"
+    local component_versions='{}' output_file
 
-    install_dir="/opt/azurehpc"
-    mkdir -p ${install_dir}
-    component_versions_json="${install_dir}/component_versions.txt"
-
-    if [ ! -f "${component_versions_json}" ]
-    then
-        jq -n "{ \"${component}\": \"${version}\" }" > ${component_versions_json}
-    else
-        component_versions=$(cat "${component_versions_json}")
-        echo "${component_versions}" | jq ". + {\"${component}\": \"${version}\"}" > ${component_versions_json}
+    mkdir -p "$install_dir" || return
+    if [[ -f "$component_versions_json" ]]; then
+        component_versions=$(cat "$component_versions_json") || return
     fi
-    chmod 644 ${component_versions_json}
+    output_file=$(mktemp "${component_versions_json}.XXXXXX") || return
+
+    # Manifest keys become VERSION_<key> shell variables in run-tests.sh.
+    # Migrate inherited keys too; prefer an existing canonical key if both
+    # spellings occur, then overwrite the component being installed.
+    if ! jq -e --arg component "$component" --arg version "$version" '
+        . as $existing
+        | with_entries(.key |= gsub("[^A-Za-z0-9_]"; "_"))
+        | . + ($existing | with_entries(select(.key | test("^[A-Za-z0-9_]+$"))))
+        | .[($component | gsub("[^A-Za-z0-9_]"; "_"))] = $version
+    ' <<< "$component_versions" > "$output_file"; then
+        rm -f -- "$output_file"
+        return 1
+    fi
+    # Do not truncate the inherited manifest if JSON parsing/writing fails.
+    if ! chmod 644 "$output_file" || ! mv -f -- "$output_file" "$component_versions_json"; then
+        rm -f -- "$output_file"
+        return 1
+    fi
 }
 
 ############################################################################
