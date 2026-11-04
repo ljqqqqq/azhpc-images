@@ -349,7 +349,15 @@ function verify_cuda_installation {
 
     # Verify the compilation of CUDA samples
     if _is_vr200_sku; then
-        /usr/local/cuda/samples/segmentationTreeThrust
+        (
+            local sample_workdir
+            sample_workdir=$(mktemp -d) || exit "$?"
+            trap 'rm -rf -- "$sample_workdir"' EXIT
+            # The sample finds data and writes results relative to its working directory.
+            cp /usr/local/cuda/samples/{test,ref_00,ref_09}.ppm "$sample_workdir/" || exit "$?"
+            cd "$sample_workdir" || exit "$?"
+            /usr/local/cuda/samples/segmentationTreeThrust
+        )
         check_exit_code "CUDA segmentationTreeThrust sample" "Failed to run segmentationTreeThrust"
 
         /usr/local/cuda/samples/radixSortThrust | grep -q "Test passed"
