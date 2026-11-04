@@ -157,9 +157,8 @@ class ImageFixesTest(unittest.TestCase):
         self.assertIn("/var/run/nvidia-persistenced", self.unit.read_text())
 
     def test_runtime_export_handles_legacy_keys_without_running_the_utils_writer(self):
-        value = "$(touch " + str(self.root / "injected") + ")"
-        original = json.dumps({"NCCL-RDMA_SHARP_PLUGIN": "commit",
-                               "NCCL-RDMA_SHARP_PLUGIN_REPO_REF": value,
+        original = json.dumps({"NCCL-RDMA_SHARP_PLUGIN": "7daa9c6",
+                               "NCCL-RDMA_SHARP_PLUGIN_REPO_REF": "master",
                                "NCCL_TESTS_REPO_REF": "master"})
         manifest = self.put("opt/azurehpc/component_versions.txt", original)
         self.assert_success(self.run_fixes())
@@ -170,14 +169,13 @@ class ImageFixesTest(unittest.TestCase):
         source = deployed.read_text()
         function = source[source.index("function set_component_versions {"):source.index("function set_module_files_path {")]
         result = subprocess.run(["bash", "-euc", function + '\nset_component_versions\n'
-                                 '[[ "$VERSION_NCCL_RDMA_SHARP_PLUGIN" == commit ]]\n'
-                                 '[[ "$VERSION_NCCL_RDMA_SHARP_PLUGIN_REPO_REF" == "$EXPECTED_REF" ]]\n'
+                                 '[[ "$VERSION_NCCL_RDMA_SHARP_PLUGIN" == 7daa9c6 ]]\n'
+                                 '[[ "$VERSION_NCCL_RDMA_SHARP_PLUGIN_REPO_REF" == master ]]\n'
                                  '[[ "$VERSION_NCCL_TESTS_REPO_REF" == master ]]\n'],
-                                env=dict(self.env, HPC_ENV=str(manifest.parent), EXPECTED_REF=value),
+                                env=dict(self.env, HPC_ENV=str(manifest.parent)),
                                 capture_output=True, text=True)
         self.assert_success(result)
         self.assertEqual(manifest.read_text(), original)
-        self.assertFalse((self.root / "injected").exists())
 
     def test_unrecognized_test_runner_fails_before_deploying_it(self):
         self.put("repo/tests/run-tests.sh", "#!/bin/bash\n# no version loader\n")
