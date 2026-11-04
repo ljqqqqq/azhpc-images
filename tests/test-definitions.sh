@@ -572,7 +572,7 @@ function verify_systemd_unit_syntax {
         if (( ${#units[@]} > 0 )); then
             run_command_and_check_exit_code "systemd generated unit syntax" \
                 "systemd-analyze verify failed for generated or runtime units" \
-                "${systemd_analyze}" verify --recursive-errors=no --man=no "${units[@]}"
+                run_with_sudo_if_needed "${systemd_analyze}" verify --recursive-errors=no --man=no "${units[@]}"
         fi
     )
 }
