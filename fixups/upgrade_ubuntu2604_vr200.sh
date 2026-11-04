@@ -139,6 +139,8 @@ move_previous_paths "$nvbandwidth_path"
 run_component install_nvbandwidth_tool.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvbandwidth.log"
 nvbandwidth_completed=true
 
+bash "${TOP_DIR}/fixups/vr200_refresh/apply_image_fixes.sh" 2>&1 | tee "${VR200_REPORT_DIR}/image-fixes.log"
+
 # Restore only the temporary policy-rc.d and original package holds.
 # Component configuration remains as written by the installers.
 restore_image_settings

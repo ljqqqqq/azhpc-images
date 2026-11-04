@@ -254,6 +254,11 @@ class UpgradeTest(unittest.TestCase):
         (self.root / "opt/nvidia/nvbandwidth/nvbandwidth").symlink_to("old-binary")
         for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool"):
             self.put(f"repo/components/install_{name}.sh", INSTALLER)
+        # The isolated image-fix behavior is exercised in test_image_fixes.py.
+        self.put("repo/fixups/vr200_refresh/apply_image_fixes.sh",
+                 '#!/bin/bash\nset -euo pipefail\n'
+                 'echo "Applied isolated image fixes"\n'
+                 '[[ "${FAIL_IMAGE_FIXES:-}" != 1 ]] || exit 42\n')
 
     def put(self, path, content, mode=0o644):
         path = self.root / path
@@ -301,6 +306,8 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual((self.root / "usr/share/keyrings/nvidia-driver-local-new-keyring.gpg").read_text(), "new keyring\n")
         self.assertFalse(list((self.root / "var/tmp").glob("vr200-in-place-upgrade.*")))
         self.assertTrue((self.root / "var/tmp/azhpc-image-evidence/mock-run/upgrade/packages-after.tsv").is_file())
+        self.assertIn("Applied isolated image fixes",
+                      (self.root / "var/tmp/azhpc-image-evidence/mock-run/upgrade/image-fixes.log").read_text())
         self.assertIn("reboot to apply", (self.root / "var/tmp/azhpc-image-evidence/mock-run/upgrade/remove-nolpi.log").read_text())
         self.assertNotIn("irqchip.gicv3_nolpi", (self.root / "boot/grub/grub.cfg").read_text())
         self.assertEqual((self.root / "etc/default/grub.d/50-cloudimg-settings.cfg").read_text(),
@@ -572,6 +579,12 @@ class UpgradeTest(unittest.TestCase):
         result = self.run_remove_nolpi(KEEP_NOLPI="1")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("remains in generated kernel boot entries", result.stderr)
+
+    def test_image_fixes_failure_stops_and_restores_temporary_state(self):
+        result = self.run_upgrade(FAIL_IMAGE_FIXES="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assert_restored()
+        self.assertFalse((self.root / "var/tmp/azhpc-image-evidence/mock-run/upgrade/packages-after.tsv").exists())
 
 
 if __name__ == "__main__":
