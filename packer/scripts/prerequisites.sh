@@ -350,8 +350,8 @@ install_ubuntu_lts_kernel() {
     local version=$1
     local gpu_sku="${GPU_SKU}"
     
-    # SKUs with rackscale NVLink use a special nvidia kernel, not LTS
-    if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" != "7.0" ]]; then
+    # Ubuntu 26.04 uses Azure kernels for every minor version, including 7.3.
+    if [[ "${NVLINK_RACKSCALE}" == "true" && "${version}" != "26.04" && "${KERNEL_VERSION}" != "7.0" ]]; then
         install_ubuntu_nvidia_kernel
         return $?
     fi
@@ -417,13 +417,22 @@ install_ubuntu_lts_kernel() {
             local ubuntu_codename="resolute"
             local kernel_ver="${KERNEL_VERSION:-7.0}"
             local kernel_pkg="linux-azure-${kernel_ver}"
+            local all_kernel_minors="7.0 7.3"
+
+            if [[ "${NVLINK_RACKSCALE}" == "true" ]]; then
+                case "${kernel_ver}" in
+                    7.0) kernel_pkg="linux-azure-64k" ;;
+                    7.3) kernel_pkg="linux-azure-64k-edge" ;;
+                    *)
+                        echo "ERROR: unsupported Ubuntu 26.04 64K kernel: ${kernel_ver}" >&2
+                        return 1
+                        ;;
+                esac
+            fi
 
             if [ "$USE_UBUNTU_PPA_REPO" == "True" ]; then
                 echo "##[section] PPA kernel repo is enabled, installing PPA kernel version: $UBUNTU_PPA_KERNEL_PATCH_VERSION"
                 sudo add-apt-repository -y "$UBUNTU_PPA_REPO_NAME"
-                if [[ "${NVLINK_RACKSCALE}" == "true" ]]; then
-                    kernel_pkg="linux-azure-64k"
-                fi
                 install_from_ppa_repo "${kernel_pkg}" "$UBUNTU_PPA_KERNEL_PATCH_VERSION" "$UBUNTU_PPA_REPO_NAME"
             elif [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
                 install_from_proposed_suite "${ubuntu_codename}" "${kernel_pkg}"
@@ -431,22 +440,43 @@ install_ubuntu_lts_kernel() {
                 apt install -y "${kernel_pkg}"
                 # linux-modules-extra-azure-${kernel_ver} is not published for 7.0 in resolute;
                 # contents were folded into linux-modules-azure-${kernel_ver}. Install only if present.
-                if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
+                if [[ "${kernel_pkg}" != linux-azure-64k* ]] && apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
                     apt install -y linux-modules-extra-azure-${kernel_ver}
                 else
-                    echo "##[warning]linux-modules-extra-azure-${kernel_ver} is not in the archive; skipping (modules already in linux-modules-azure-${kernel_ver})."
+                    echo "Skipping separate ordinary Azure extra modules for ${kernel_pkg}."
                 fi
             fi
-            if [[ "${kernel_pkg}" == "linux-azure-64k" ]]; then
-                local packages_to_remove
-                packages_to_remove=$(dpkg -l | awk -v kernel_ver="${kernel_ver}" '
-                    $2 == "linux-azure" || $2 == "linux-image-azure" { print $2 }
-                    $2 ~ ("^linux-(azure|image-azure|modules-extra-azure)-" kernel_ver) && $2 !~ /64k/ { print $2 }
-                    $2 ~ ("^linux-(image|cloud-tools|headers|modules|tools)-" kernel_ver) && $2 !~ /64k/ { print $2 }
-                ' || true)
-                if [[ -n "${packages_to_remove}" ]]; then
-                    apt-get purge -y ${packages_to_remove}
-                fi
+
+            local packages_to_remove
+            # Like Ubuntu 24.04, purge other minor versions. Use the installed
+            # version to classify unversioned and edge meta packages too.
+            # For 64K, also purge ordinary Azure flavor packages, but keep the
+            # target minor's shared headers/tools and generic *-common packages.
+            packages_to_remove=$(dpkg -l | awk \
+                -v kernel_ver="${kernel_ver}" \
+                -v all_kernel_minors="${all_kernel_minors}" \
+                -v kernel_pkg="${kernel_pkg}" '
+                BEGIN { count = split(all_kernel_minors, minors, " ") }
+                $1 != "ii" { next }
+                $2 !~ /^linux-azure($|-)/ &&
+                $2 !~ /^linux-(image(-unsigned)?|headers|modules(-extra)?|tools|cloud-tools)-([0-9]|azure)/ &&
+                $2 !~ /^linux-(main-modules-zfs(-unsigned)?|modules-zfs(-unsigned)?|buildinfo|lib-rust)-/ { next }
+
+                {
+                    for (i = 1; i <= count; i++) {
+                        if (minors[i] != kernel_ver && index($3, minors[i] ".") == 1) {
+                            print $2
+                            next
+                        }
+                    }
+                }
+
+                kernel_pkg ~ /^linux-azure-64k/ &&
+                    ($2 ~ /^linux-(azure|image-azure|headers-azure|tools-azure|cloud-tools-azure|modules-extra-azure|modules-zfs(-unsigned)?-azure)(-[0-9]+\.[0-9]+|-edge)?$/ ||
+                     $2 ~ /-azure$/) { print $2 }
+            ')
+            if [[ -n "${packages_to_remove}" ]]; then
+                apt-get purge -y ${packages_to_remove}
             fi
             apt autoremove -y
             apt upgrade -y
@@ -479,7 +509,7 @@ install_ubuntu_lts_kernel() {
             ;;
     esac
     
-    if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" == "7.0" ]]; then
+    if [[ "${NVLINK_RACKSCALE}" == "true" && ( "${version}" == "26.04" || "${KERNEL_VERSION}" == "7.0" ) ]]; then
         configure_nvlink_rackscale_kernel
     fi
     echo "Ubuntu LTS kernel installation complete"
