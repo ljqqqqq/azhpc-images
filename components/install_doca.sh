@@ -228,6 +228,15 @@ Pin: release l=DOCA-HOST*
 Pin-Priority: -1
 PIN
 
+    # cuda-keyring gives the CUDA repo priority 600, which can select its older
+    # MFT over the version required by doca-ofed. Keep MFT and its kernel packages
+    # on the DOCA release while retaining the CUDA DKMS preference above.
+    cat > /etc/apt/preferences.d/doca-mft-pin <<'PIN'
+Package: mft mft-* kernel-mft-*
+Pin: release l=DOCA-HOST*
+Pin-Priority: 700
+PIN
+
     apt-get update
     install_hpcx_doca_ofed_deps_apt_marker
     configure_doca_dkms_patches mlnx-ofed-kernel
