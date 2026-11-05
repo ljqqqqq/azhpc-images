@@ -912,7 +912,7 @@
                         "commit": "v2.7.x"
                     }
                 },
-                "version": "2.30.4-1",
+                "version": "2.31.2-1",
                 "rdmasharpplugins": {
                     "commit": "master"
                 }
