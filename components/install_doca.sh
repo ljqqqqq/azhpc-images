@@ -65,6 +65,25 @@ EOF
     # install_cuda_repo_and_dkms.sh provides support for /etc/dkms patch overlays.
 }
 
+configure_mlnx_ofed_kernel_dkms_xsk_metadata_patch() {
+    local module_version=2607.0.100-1
+    local dkms_conf=/etc/dkms/mlnx-ofed-kernel-${module_version}.conf
+    local patch_dir=/etc/dkms/mlnx-ofed-kernel/patches
+
+    [[ "${DISTRIBUTION}" == "ubuntu24.04" && "${DOCA_VERSION}" == "3.5.0" ]] || return 0
+
+    # DOCA 3.5.0's OFED calls xsk_buff_get_metadata with two arguments.
+    # Probe the helper during each DKMS rebuild so kernels with the newer
+    # descriptor-options argument and older two-argument kernels both work.
+    mkdir -p "${patch_dir}"
+    cp "${COMPONENT_DIR}/patches/mlnx-ofed-kernel-xsk-metadata-options.patch" "${patch_dir}/xsk-metadata-options.patch"
+    # The module-wide overlay retains the optional PeerDirect patch. Append
+    # this fix in the version-specific overlay without hard-coding an index.
+    cat > "${dkms_conf}" <<'EOF'
+PATCH+=("xsk-metadata-options.patch")
+EOF
+}
+
 install_hpcx_doca_ofed_deps_apt_marker() {
     local marker_control=/tmp/${HPCX_DOCA_OFED_DEPS_MARKER}
     local openmpi_version=""
@@ -241,6 +260,7 @@ PIN
     install_hpcx_doca_ofed_deps_apt_marker
     configure_doca_dkms_patches mlnx-ofed-kernel
     configure_mlnx_ofed_kernel_dkms_xdp_patch
+    configure_mlnx_ofed_kernel_dkms_xsk_metadata_patch
     apt-get -y install doca-ofed
     check_dkms_status mlnx-ofed-kernel iser isert srp
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then

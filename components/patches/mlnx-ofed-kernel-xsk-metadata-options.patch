@@ -1,0 +1,100 @@
+DOCA 3.5.0 / OFED 2607.0.100-1 calls the older two-argument AF_XDP
+metadata helper. Probe the kernel helper at each DKMS build and pass the
+descriptor options only for the three-argument API. Keep rdma.m4, the
+shipped configure script and config.h.in in sync; DKMS does not regenerate
+the autotools files. Preserve the older call for two-argument kernels.
+
+diff --git a/compat/config/rdma.m4 b/compat/config/rdma.m4
+--- a/compat/config/rdma.m4
++++ b/compat/config/rdma.m4
+@@ -3653,6 +3653,13 @@
+ 		return 0;
+ 	])
+ 
++	MLNX_RDMA_TEST_CASE(HAVE_XSK_BUFF_GET_METADATA_3_PARAMS, [xsk_buff_get_metadata has 3 params], [
++		#include <net/xdp_sock_drv.h>
++	],[
++		xsk_buff_get_metadata(NULL, 0, 0);
++		return 0;
++	])
++
+ 	MLNX_RDMA_TEST_CASE(HAVE_XSK_TX_METADATA_REQUEST_4_PARAMS, [xsk_tx_metadata_request has 4 params], [
+ 		#include <net/xdp_sock_drv.h>
+ 	],[
+diff --git a/compat/configure b/compat/configure
+--- a/compat/configure
++++ b/compat/configure
+@@ -18511,6 +18511,45 @@
+ 
+ 	if false; then
+ 
++printf "%s\n" "#define HAVE_XSK_BUFF_GET_METADATA_3_PARAMS -1" >>confdefs.h
++
++	fi
++	MLNX_RDMA_MOD_NAME=HAVE_XSK_BUFF_GET_METADATA_3_PARAMS
++	MLNX_RDMA_MOD_DIR="$MLNX_RDMA_MODULES_DIR/$MLNX_RDMA_MOD_NAME"
++	rm -rf "$MLNX_RDMA_MOD_DIR"
++	mkdir -p "$MLNX_RDMA_MOD_DIR"
++	cat <<'EOF' >"$MLNX_RDMA_MOD_DIR/$MLNX_RDMA_TEST_MOD.c"
++#include <linux/module.h>
++#include <linux/kernel.h>
++MODULE_LICENSE("GPL");
++
++		#include <net/xdp_sock_drv.h>
++
++static int __maybe_unused test_func (void) {
++
++		xsk_buff_get_metadata(NULL, 0, 0);
++		return 0;
++
++	return 0;
++}
++EOF
++		cat <<EOF >"$MLNX_RDMA_MOD_DIR/Makefile"
++obj-m += $MLNX_RDMA_TEST_MOD.o
++# The rest is for printing a single dot:
++ifeq (,\$(MLNX_RDMA_SILENT))
++\$(obj)/$MLNX_RDMA_TEST_MOD.o: \$(obj)/echo
++\$(obj)/echo:
++	@echo -n .
++.PHONY: \$(obj)/echo
++endif
++EOF
++	echo "obj-\$(MLNX_TEST)\$(MLNX_TEST_$MLNX_RDMA_MOD_NAME) += $MLNX_RDMA_MOD_NAME/" >>$MLNX_RDMA_MODULES_DIR/Makefile
++	echo "xsk_buff_get_metadata has 3 params" > "$MLNX_RDMA_MODULES_DIR/desc"
++
++
++
++	if false; then
++
+ printf "%s\n" "#define HAVE_XSK_TX_METADATA_REQUEST_4_PARAMS -1" >>confdefs.h
+ 
+ 	fi
+diff --git a/compat/config.h.in b/compat/config.h.in
+--- a/compat/config.h.in
++++ b/compat/config.h.in
+@@ -2798,6 +2798,9 @@
+ /* xsk_buff_xdp_get_frame_dma is defined */
+ #undef HAVE_XSK_BUFF_GET_FRAME_DMA
+ 
++/* xsk_buff_get_metadata has 3 params */
++#undef HAVE_XSK_BUFF_GET_METADATA_3_PARAMS
++
+ /* xsk_buff_set_size is defined */
+ #undef HAVE_XSK_BUFF_SET_SIZE
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/tx.c b/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/tx.c
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/tx.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/tx.c
+@@ -119,7 +119,11 @@
+ #endif
+ 		xdptxd.len = desc.len;
+ #ifdef HAVE_XSK_TX_METADATA_OPS
++#ifdef HAVE_XSK_BUFF_GET_METADATA_3_PARAMS
++		meta = xsk_buff_get_metadata(pool, desc.addr, desc.options);
++#else
+ 		meta = xsk_buff_get_metadata(pool, desc.addr);
++#endif
+ #endif
+ 
+ #ifdef HAVE_XSK_BUFF_ALLOC
