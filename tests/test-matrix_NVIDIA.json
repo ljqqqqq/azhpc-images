@@ -121,7 +121,7 @@
         }
     },
     "ubuntu26.04": {
-        "_comment": "Lustre is still omitted until AMLFS publishes packages for resolute / kernel 7.0.",
+        "_comment": "Lustre is omitted by the shared installer for kernels >= 7.",
         "azure_vm_regular": {
             "common": {
                 "components": [

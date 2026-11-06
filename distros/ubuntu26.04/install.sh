@@ -70,8 +70,7 @@ if [ "$GPU" = "NVIDIA" ]; then
     $COMPONENT_DIR/install_dcgm.sh
 fi
 
-# install Lustre client; the shared installer skips kernel 7.0 until AMLFS
-# publishes a compatible package.
+# Install Lustre client; the shared installer currently skips kernels >= 7.
 $COMPONENT_DIR/install_lustre_client.sh
 
 # install mpifileutils

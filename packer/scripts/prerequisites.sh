@@ -350,8 +350,8 @@ install_ubuntu_lts_kernel() {
     local version=$1
     local gpu_sku="${GPU_SKU}"
     
-    # Ubuntu 26.04 uses Azure kernels for every minor version, including 7.3.
-    if [[ "${NVLINK_RACKSCALE}" == "true" && "${version}" != "26.04" && "${KERNEL_VERSION}" != "7.0" ]]; then
+    # Ubuntu 26.04 and kernels >= 7 use Azure kernels for NVLink builds.
+    if [[ "${NVLINK_RACKSCALE}" == "true" && "${version}" != "26.04" && "${KERNEL_VERSION%%.*}" -lt 7 ]]; then
         install_ubuntu_nvidia_kernel
         return $?
     fi
@@ -509,7 +509,7 @@ install_ubuntu_lts_kernel() {
             ;;
     esac
     
-    if [[ "${NVLINK_RACKSCALE}" == "true" && ( "${version}" == "26.04" || "${KERNEL_VERSION}" == "7.0" ) ]]; then
+    if [[ "${NVLINK_RACKSCALE}" == "true" && ( "${version}" == "26.04" || "${KERNEL_VERSION%%.*}" -ge 7 ) ]]; then
         configure_nvlink_rackscale_kernel
     fi
     echo "Ubuntu LTS kernel installation complete"
