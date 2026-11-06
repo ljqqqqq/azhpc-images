@@ -56,6 +56,9 @@ if [ "$GPU" = "NVIDIA" ]; then
     
     # Install NCCL
     $COMPONENT_DIR/install_nccl.sh
+
+    # Install DCGM
+    $COMPONENT_DIR/install_dcgm.sh
 fi
 
 if [[ "$GPU" == "AMD" ]]; then
@@ -64,11 +67,6 @@ fi
 
 # Install Docker container runtime
 $COMPONENT_DIR/install_docker.sh
-
-if [ "$GPU" = "NVIDIA" ]; then
-    # Install DCGM
-    $COMPONENT_DIR/install_dcgm.sh
-fi
 
 # install Lustre client; the shared installer skips kernel 7.0 until AMLFS
 # publishes a compatible package.
@@ -105,22 +103,17 @@ $COMPONENT_DIR/install_waagent.sh
 # install persistent rdma naming
 $COMPONENT_DIR/install_azure_persistent_rdma_naming.sh
 
-if [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
+# Install AZNFS Mount Helper
+$COMPONENT_DIR/install_aznfs.sh
 
-    # Install AZNFS Mount Helper
-    $COMPONENT_DIR/install_aznfs.sh
+# install diagnostic script
+$COMPONENT_DIR/install_hpcdiag.sh
 
-    # install diagnostic script
-    $COMPONENT_DIR/install_hpcdiag.sh
+# install monitor tools
+$COMPONENT_DIR/install_monitoring_tools.sh
 
-    # install monitor tools
-    $COMPONENT_DIR/install_monitoring_tools.sh
-
-    # Azure NHC does not yet support NCv6
-    if [[ "$SKU" != "NCv6" ]]; then
-        # install Azure Node Health Checks
-        $COMPONENT_DIR/install_health_checks.sh "$GPU"
-    fi
+if [[ "${NVLINK_RACKSCALE,,}" != "true" && "$SKU" != "NCv6" ]]; then
+    $COMPONENT_DIR/install_health_checks.sh "$GPU"
 fi
 
 # write kernel and OS version metadata
