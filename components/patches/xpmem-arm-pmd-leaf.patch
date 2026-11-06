@@ -1,0 +1,15 @@
+diff --git a/kernel/xpmem_pfn.c b/kernel/xpmem_pfn.c
+--- a/kernel/xpmem_pfn.c
++++ b/kernel/xpmem_pfn.c
+@@ -51,7 +51,11 @@
+ #endif
+ 
+ #if (defined(CONFIG_ARM64) || defined(CONFIG_ARM))
++#ifdef HAVE_PMD_LEAF_MACRO
++#define pmd_is_huge(p) pmd_leaf(p)
++#else
+ #define pmd_is_huge(p) pmd_sect(p)
++#endif
+ #if (defined(pud_sect))
+ #define pud_is_huge(p) pud_sect(p)
+ #else

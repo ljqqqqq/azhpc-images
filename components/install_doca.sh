@@ -38,6 +38,26 @@ PATCH[0]="dpll-ffo-param.patch"
 EOF
 }
 
+configure_xpmem_dkms_compat_patches() {
+    local module_version=2601.0.9
+    local dkms_conf=/etc/dkms/xpmem-${module_version}.conf
+    local patch_dir=/usr/src/xpmem-${module_version}/patches
+
+    [[ "${DISTRIBUTION}" == "ubuntu26.04" &&
+       "${ARCHITECTURE}" == "aarch64" &&
+       "${DOCA_VERSION}" == "3.3.1" ]] || return 0
+
+    # Stage patches before apt unpacks XPMEM and starts its first DKMS build.
+    # DKMS copies this source directory, including patches, on every rebuild.
+    # TODO: Remove when DOCA's XPMEM supports the newer kernel helpers.
+    mkdir -p "${patch_dir}" /etc/dkms
+    cp "${COMPONENT_DIR}/patches/xpmem-zap-special-vma-range.patch" "${patch_dir}/"
+    cp "${COMPONENT_DIR}/patches/xpmem-arm-pmd-leaf.patch" "${patch_dir}/"
+    cat > "${dkms_conf}" <<'EOF'
+PATCH+=("xpmem-zap-special-vma-range.patch" "xpmem-arm-pmd-leaf.patch")
+EOF
+}
+
 install_hpcx_doca_ofed_deps_apt_marker() {
     local marker_control=/tmp/${HPCX_DOCA_OFED_DEPS_MARKER}
     local openmpi_version=""
@@ -207,8 +227,14 @@ PIN
           "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ]]; then
         install_hpcx_doca_ofed_deps_apt_marker
     fi
+    configure_xpmem_dkms_compat_patches
     apt-get -y install doca-ofed
     check_dkms_status mlnx-ofed-kernel iser isert srp
+    if [[ "${DISTRIBUTION}" == "ubuntu26.04" &&
+          "${ARCHITECTURE}" == "aarch64" &&
+          "${DOCA_VERSION}" == "3.3.1" ]]; then
+        check_dkms_status xpmem
+    fi
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     download_and_verify $DOCA_URL $DOCA_SHA256
     rpm -i $DOCA_FILE
