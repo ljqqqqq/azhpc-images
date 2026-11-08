@@ -144,5 +144,5 @@ EOF
 systemctl daemon-reload
 systemctl enable azure_persistent_rdma_naming.service
 systemctl enable azure_persistent_rdma_naming.timer
-systemctl start azure_persistent_rdma_naming.service
-systemctl start azure_persistent_rdma_naming.timer
+# systemctl start azure_persistent_rdma_naming.service
+# systemctl start azure_persistent_rdma_naming.timer
