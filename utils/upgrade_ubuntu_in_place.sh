@@ -11,7 +11,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 for script in \
     fix_usn_8956_1_brotli.sh \
     fix_usn_8954_1_zlib.sh \
-    fix_cve_2026_94286_101917_104715.sh; do
+    fix_cve_2026_94286_101917_104715.sh \
+    fix_ubuntu2404_cve_packages.sh; do
     echo "##[section]Ubuntu in-place upgrade: ${script}"
     bash "${SCRIPT_DIR}/${script}"
 done
