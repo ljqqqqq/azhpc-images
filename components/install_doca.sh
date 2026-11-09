@@ -20,44 +20,6 @@ else
     DOCA_FILE=$(basename ${DOCA_URL})
 fi
 
-configure_mlnx_ofa_kernel_dkms_dpll_patch() {
-    local kernel_header=/usr/src/kernels/$(uname -r)/include/linux/dpll.h
-    local dkms_conf=/etc/dkms/mlnx-ofa_kernel.conf
-    local patch_file=${COMPONENT_DIR}/patches/mlnx-ofa-kernel-dpll-ffo-param.patch
-    local patch_dir=/etc/dkms/mlnx-ofa_kernel/patches
-
-    # Alma/Rocky/RHEL 9.8 kernels use Red Hat's newer DPLL ffo_get callback
-    # signature, while DOCA 3.2.x / MLNX OFED 25.10 still ships the older one.
-    [[ -f "${kernel_header}" ]] || return 0
-    grep -q 'struct dpll_ffo_param \*ffo,' "${kernel_header}" || return 0
-
-    mkdir -p "${patch_dir}"
-    cp "${patch_file}" "${patch_dir}/dpll-ffo-param.patch"
-    cat > "${dkms_conf}" <<'EOF'
-PATCH[0]="dpll-ffo-param.patch"
-EOF
-}
-
-configure_xpmem_dkms_compat_patches() {
-    local module_version=2601.0.9
-    local dkms_conf=/etc/dkms/xpmem-${module_version}.conf
-    local patch_dir=/usr/src/xpmem-${module_version}/patches
-
-    [[ "${DISTRIBUTION}" == "ubuntu26.04" &&
-       "${ARCHITECTURE}" == "aarch64" &&
-       "${DOCA_VERSION}" == "3.3.1" ]] || return 0
-
-    # Stage patches before apt unpacks XPMEM and starts its first DKMS build.
-    # DKMS copies this source directory, including patches, on every rebuild.
-    # TODO: Remove when DOCA's XPMEM supports the newer kernel helpers.
-    mkdir -p "${patch_dir}" /etc/dkms
-    cp "${COMPONENT_DIR}/patches/xpmem-zap-special-vma-range.patch" "${patch_dir}/"
-    cp "${COMPONENT_DIR}/patches/xpmem-arm-pmd-leaf.patch" "${patch_dir}/"
-    cat > "${dkms_conf}" <<'EOF'
-PATCH+=("xpmem-zap-special-vma-range.patch" "xpmem-arm-pmd-leaf.patch")
-EOF
-}
-
 install_hpcx_doca_ofed_deps_apt_marker() {
     local marker_control=/tmp/${HPCX_DOCA_OFED_DEPS_MARKER}
     local openmpi_version=""
@@ -227,12 +189,10 @@ PIN
           "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ]]; then
         install_hpcx_doca_ofed_deps_apt_marker
     fi
-    configure_xpmem_dkms_compat_patches
     apt-get -y install doca-ofed
     check_dkms_status mlnx-ofed-kernel iser isert srp
     if [[ "${DISTRIBUTION}" == "ubuntu26.04" &&
-          "${ARCHITECTURE}" == "aarch64" &&
-          "${DOCA_VERSION}" == "3.3.1" ]]; then
+          "${ARCHITECTURE}" == "aarch64" ]]; then
         check_dkms_status xpmem
     fi
 elif [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
@@ -251,7 +211,6 @@ else
     cp /etc/dnf/dnf.conf /etc/dnf/dnf.conf.bak
     sed -i '/^exclude=/d' /etc/dnf/dnf.conf
     install_hpcx_doca_ofed_deps_rpm_marker
-    configure_mlnx_ofa_kernel_dkms_dpll_patch
     dnf -y install doca-ofed
     check_dkms_status mlnx-ofa_kernel iser isert srp
     # Restore exclusion
