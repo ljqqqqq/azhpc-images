@@ -104,9 +104,18 @@ resolve_exact_version_deps() {
 
 # Install DCGM
 # Reference: https://developer.nvidia.com/dcgm#Downloads
-# the repo is already added during nvidia/ cuda installations
+# Public stacks already configured the repo during NVIDIA/CUDA installation.
 
 if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
+    if [[ "$(jq -r '.driver.source // "public"' <<< "$cuda_metadata")" == private ]]; then
+        CUDA_REPO_DISTRIBUTION=$(jq -r '.driver.distribution' <<< "$cuda_metadata")
+        if [[ "$ARCHITECTURE" == aarch64 ]]; then
+            CUDA_REPO_ARCHITECTURE=sbsa
+        else
+            CUDA_REPO_ARCHITECTURE=x86_64
+        fi
+        configure_cuda_apt_repo "$CUDA_REPO_DISTRIBUTION" "$CUDA_REPO_ARCHITECTURE" dcgm
+    fi
     if [[ $DISTRIBUTION == "ubuntu26.04" &&
           ( "${SKU}" != "VR200" || "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ) ]]; then
         apt-get install -y \
