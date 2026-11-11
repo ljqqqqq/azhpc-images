@@ -124,7 +124,7 @@ move_previous_paths() {
     done
 }
 CUDA_REPO_DISTRIBUTION=$(jq -r '.driver.distribution' <<< "$cuda_metadata")
-configure_cuda_apt_repo "$CUDA_REPO_DISTRIBUTION" sbsa disabled \
+cuda_online_repo "$CUDA_REPO_DISTRIBUTION" sbsa disabled \
     2>&1 | tee "${VR200_REPORT_DIR}/cuda-source-policy.log"
 run_component install_doca.sh 2>&1 | tee "${VR200_REPORT_DIR}/doca.log"
 # This private CUDA repo changed contents without changing its package version.
@@ -143,7 +143,7 @@ nvbandwidth_completed=true
 bash "${TOP_DIR}/fixups/vr200_refresh/apply_image_fixes.sh" 2>&1 | tee "${VR200_REPORT_DIR}/image-fixes.log"
 
 # DCGM is inherited from the base image; keep only its public packages available.
-configure_cuda_apt_repo "$CUDA_REPO_DISTRIBUTION" sbsa dcgm \
+cuda_online_repo "$CUDA_REPO_DISTRIBUTION" sbsa dcgm \
     2>&1 | tee -a "${VR200_REPORT_DIR}/cuda-source-policy.log"
 
 # Restore only the temporary policy-rc.d and original package holds.
