@@ -156,3 +156,56 @@ Run the mock regression checks on Linux (no system package installation):
 ```bash
 python3 fixups/vr200_refresh/test_upgrade.py
 ```
+
+## Repair mixed public/private NVIDIA and CUDA packages
+
+`upgrade_ubuntu2604_vr200_private_nvidia_cuda.sh` is a separate entry point for
+build 40806 (`2611.11.4690`). Its fixed target list is the five public
+NVIDIA/IMEX downloads confirmed in that build's `upgrade/nvidia.log`.
+See [the package audit](vr200_refresh/build_40806_private_nvidia_cuda.md).
+The 54 older CUDA versions in that audit are comparison data, not proof of
+public origin; they are outside this repair's target list.
+
+```text
+REFRESH_MODE=true
+REFRESH_BASE_IMAGE_ID=<resource ID of UbuntuHPC-26.04-VR200-gen2/2611.11.4690>
+SKIP_PREREQUISITES=true
+INTERNAL_BITS_CONTAINER_NAME=u26-vr200-internal
+INTERNAL_BITS_BLOB_NAME=u26_vr200_internal_1_0_0_DEV2.tar.gz
+EXTRA_PROVISION_SCRIPT=fixups/upgrade_ubuntu2604_vr200_private_nvidia_cuda.sh
+```
+
+For direct use, stage the matching repository DEBs in `internal_bits/`, or pass
+the bundle to `sudo bash fixups/upgrade_ubuntu2604_vr200_private_nvidia_cuda.sh
+/path/to/u26_vr200_internal_1_0_0_DEV2.tar.gz` (one command).
+
+The repair verifies the two outer repository checksums from `versions.json`,
+reinstalls them even when their Debian versions match, and selects private
+replacements for the five confirmed public packages. The installed package
+versions must match the source evidence before proceeding. A private archive
+at the currently installed version is preferred even if newer private archives
+are present. If no matching version exists, a single unambiguous private
+replacement is required. Each selected archive's checksum and Debian metadata
+are verified. With the current DEV2 inputs, all five are same-version reinstalls.
+
+APT uses fresh isolated indexes and an empty download cache with only the two
+signed local NVIDIA/CUDA repositories. It receives explicit private DEB paths;
+public sources cannot supply even a same-version replacement or a dependency.
+The simulation must change only the five selected packages. An extra dependency
+installation, an unrelated upgrade, or any removal stops the repair before the
+component transaction. After installation, the normal CUDA
+online source is restricted to DCGM using the existing source helper. This entry
+does not call the DOCA, NCCL, nvbandwidth or CUDA sample installers.
+
+Reports under `/var/tmp/azhpc-image-evidence/<run>/private-nvidia-cuda/` include
+the before/after inventories, per-package versions/actions/hashes/paths, isolated
+source list, APT simulation and installation log. The script verifies installed
+target versions, unchanged non-target package versions, NVIDIA DKMS/on-disk module
+version and package health, updates
+the NVIDIA/CUDA component manifest entries, and regenerates initramfs. Original
+holds and temporary `policy-rc.d` are restored even on failure. Package changes
+are not rolled back; reboot before validating GPU, IMEX and NCCL on VR200 hardware.
+
+```bash
+python3 fixups/vr200_refresh/test_private_nvidia_cuda.py
+```
