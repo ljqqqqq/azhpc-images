@@ -64,7 +64,7 @@ apt-get() {
 apt-cache() { printf '%s\n' "$TEST_PACKAGES"; }
 dpkg-query() { echo 3.2.1; }
 dpkg() { [[ -z "$TEST_OLD_APT" ]]; }
-configure_cuda_apt_repo ubuntu2604 sbsa "$2"
+cuda_online_repo ubuntu2604 sbsa "$2"
 '''
         return subprocess.run(
             [os.environ.get("BASH", "bash"), "-c", script, "bash",
@@ -85,10 +85,9 @@ configure_cuda_apt_repo ubuntu2604 sbsa "$2"
 
     def test_public_mode_remains_unrestricted(self):
         self.assert_success(self.run_mode("public"))
-        content = self.source.read_text()
-        self.assertIn("signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg", content)
-        self.assertIn("https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/sbsa/", content)
-        self.assertNotIn("include=", content)
+        self.assertEqual(self.source.read_text(),
+                         "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] "
+                         "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/sbsa/ /\n")
 
     def test_dcgm_mode_allows_only_exact_dcgm_names(self):
         self.assert_success(self.run_mode("dcgm"))

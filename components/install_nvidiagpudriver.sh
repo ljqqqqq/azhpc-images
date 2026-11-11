@@ -78,12 +78,12 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         CUDA_ARCHITECTURE="x86_64"
     fi
     if [ "$CUDA_SOURCE" = "private" ]; then
-        configure_cuda_apt_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" disabled
+        cuda_online_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" disabled
         NVIDIA_CUDA_REPO_FILE=$(jq -r '.driver.repo_file' <<< $cuda_metadata)
         NVIDIA_CUDA_REPO_SHA256=$(jq -r '.driver.sha256' <<< $cuda_metadata)
         install_from_cuda_local_repo "$NVIDIA_CUDA_REPO_FILE" "$NVIDIA_CUDA_REPO_SHA256"
     else
-        configure_cuda_apt_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" public
+        cuda_online_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" public
     fi
 
     NVIDIA_DRIVER_SOURCE=$(jq -r '.driver.source' <<< $nvidia_metadata)
