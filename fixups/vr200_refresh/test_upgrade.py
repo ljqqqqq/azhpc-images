@@ -49,7 +49,9 @@ elif name == 'dpkg-query':
         elif 'Status-Status' in args[-1]:
             repositories = json.loads((root / 'repo-packages.json').read_text())
             print('\n'.join(package + '\t' + status for package, status in repositories.items()))
-        else: print('base-package\t1.0')
+        else:
+            packages = json.loads((root / 'packages.json').read_text())
+            print('\n'.join(package + '\t' + version for package, version in packages.items()))
         sys.exit()
     package = args[-1]
     fmt = args[-2]
@@ -130,6 +132,10 @@ elif name in ('apt-get', 'apt'):
         (root / 'removed-packages.json').write_text(json.dumps([os.environ['REMOVE_OLD_PACKAGE']]))
     if os.environ.get('FAIL_APT') and 'install' in args: sys.exit(42)
     if '--no-remove' in args and os.environ.get('FAIL_PRIVATE_REINSTALL'): sys.exit(42)
+    if os.environ.get('CHANGE_NCCL') and 'install' in args:
+        packages = json.loads((root / 'packages.json').read_text())
+        packages['libnccl2'] = 'changed'
+        (root / 'packages.json').write_text(json.dumps(packages))
 elif name == 'ofed_info': print('MLNX_OFED_LINUX-26.01-2.0.0.0.617:')
 elif name == 'sudo':
     assert args[:2] == ['tee', '-a'] and str(root) in args[-1]
@@ -150,7 +156,7 @@ echo "$name" >> "$MOCK_ROOT/install-order"
 [[ "$PWD" == "$MOCK_ROOT"/var/tmp/vr200-in-place-upgrade.*/work/* ]]
 grep -q 'exit 101' "$MOCK_ROOT/usr/sbin/policy-rc.d"
 apt-mark showhold > "$MOCK_ROOT/during-holds"
-! grep -qx libnccl2 "$MOCK_ROOT/during-holds"
+grep -qx libnccl2 "$MOCK_ROOT/during-holds"
 grep -qx nvidia-container-toolkit "$MOCK_ROOT/during-holds"
 grep -qx unrelated "$MOCK_ROOT/during-holds"
 printf changed > "$MOCK_ROOT/etc/profile.d/cuda.sh"
@@ -168,7 +174,7 @@ fi
 if [[ -n "${NEW_PACKAGE_UNIT:-}" ]]; then
     ln -sfn "$MOCK_ROOT/new-package-unit" "$NEW_PACKAGE_UNIT"
 fi
-apt-mark hold gdrcopy libnccl-dev
+apt-mark hold gdrcopy
 if [[ "$name" == install_nccl.sh ]]; then
     [[ ! -e "$MOCK_ROOT/opt/nccl-tests" && ! -e "$MOCK_ROOT/tmp/nccl-tests" ]]
     [[ ! -e "$MOCK_ROOT/usr/local/nccl-rdma-sharp-plugins" && ! -L "$MOCK_ROOT/usr/local/nccl-rdma-sharp-plugins" ]]
@@ -311,16 +317,16 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual((self.root / "etc/profile.d/cuda.sh").read_text(), "changed")
         self.assertEqual((self.root / "etc/modprobe.d/nvidia-openrm.conf").read_text(), "introduced")
         self.assertEqual((self.root / "etc/apt/preferences.d/00-nvidia-prefer").read_text(), "new installer pin\n")
-        self.assertEqual((self.root / "opt/nccl-tests/version").read_text(), "new\n")
+        self.assertEqual((self.root / "opt/nccl-tests/version").read_text(), "old\n")
         plugin = self.root / "usr/local/nccl-rdma-sharp-plugins/lib"
-        self.assertEqual(sorted(path.name for path in plugin.iterdir()), ["libnccl-net.so"])
-        self.assertEqual((plugin / "libnccl-net.so").read_text(), "new\n")
+        self.assertEqual(sorted(path.name for path in plugin.iterdir()), ["libnccl-net.so", "libobsolete.so"])
+        self.assertEqual((plugin / "libnccl-net.so").read_text(), "old\n")
         bandwidth = self.root / "opt/nvidia/nvbandwidth"
         self.assertEqual(sorted(path.name for path in bandwidth.iterdir()),
                          ["nvbandwidth", "nvbandwidth_main_0.10_v6"])
         self.assertEqual((bandwidth / "nvbandwidth").read_bytes(), b"mock verified payload\n")
         self.assertEqual((self.root / "install-order").read_text().splitlines(),
-                         [f"install_{name}.sh" for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool")])
+                         [f"install_{name}.sh" for name in ("doca", "nvidiagpudriver", "nvbandwidth_tool")])
         self.assertIn("--reinstall", (self.root / "calls.log").read_text())
         repositories = json.loads((self.root / "repo-packages.json").read_text())
         self.assertEqual([name for name, state in repositories.items()
@@ -347,7 +353,7 @@ class UpgradeTest(unittest.TestCase):
         self.assertNotIn("systemctl unmask", calls)
 
     def test_each_installer_failure_restores_temporary_state(self):
-        for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool"):
+        for name in ("doca", "nvidiagpudriver", "nvbandwidth_tool"):
             with self.subTest(component=name):
                 # Each run gets a fresh base image fixture.
                 case = UpgradeTest()
@@ -360,12 +366,10 @@ class UpgradeTest(unittest.TestCase):
                     # Completed installer writes are not reverted after failure.
                     self.assertEqual((case.root / "etc/profile.d/cuda.sh").read_text(), "changed")
                     self.assertEqual((case.root / "etc/modprobe.d/nvidia-openrm.conf").read_text(), "introduced")
-                    if name != "nvbandwidth_tool":
-                        self.assertEqual((case.root / "opt/nccl-tests/version").read_text(), "old\n")
+                    self.assertEqual((case.root / "opt/nccl-tests/version").read_text(), "old\n")
                     plugin = case.root / "usr/local/nccl-rdma-sharp-plugins/lib"
-                    self.assertEqual((plugin / "libnccl-net.so").read_text(),
-                                     "new\n" if name == "nvbandwidth_tool" else "old\n")
-                    self.assertEqual((plugin / "libobsolete.so").exists(), name != "nvbandwidth_tool")
+                    self.assertEqual((plugin / "libnccl-net.so").read_text(), "old\n")
+                    self.assertTrue((plugin / "libobsolete.so").exists())
                     bandwidth = case.root / "opt/nvidia/nvbandwidth"
                     self.assertEqual(os.readlink(bandwidth / "nvbandwidth"), "old-binary")
                     self.assertEqual((bandwidth / "nvbandwidth_main_0.10_v6").read_text(), "old\n")
@@ -428,7 +432,7 @@ class UpgradeTest(unittest.TestCase):
 
     def test_absent_policy_is_removed_after_failure(self):
         (self.root / "usr/sbin/policy-rc.d").unlink()
-        result = self.run_upgrade(FAIL_COMPONENT="install_nccl.sh")
+        result = self.run_upgrade(FAIL_COMPONENT="install_nvbandwidth_tool.sh")
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(os.path.lexists(self.root / "usr/sbin/policy-rc.d"))
         self.assertEqual(sorted(json.loads((self.root / "holds.json").read_text())), sorted(self.original_holds))
@@ -457,7 +461,7 @@ class UpgradeTest(unittest.TestCase):
 
     def test_wrong_installed_package_version_is_rejected(self):
         packages = json.loads((self.root / "packages.json").read_text())
-        packages["libnccl2"] = "old-version"
+        packages["nvidia-dkms-open"] = "old-version"
         self.put("packages.json", json.dumps(packages))
         result = self.run_upgrade()
         self.assertNotEqual(result.returncode, 0)
@@ -557,13 +561,13 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = (self.root / "calls.log").read_text()
         installs = [line for line in calls.splitlines() if '--no-remove' in line]
-        self.assertEqual(len(installs), 2)
+        self.assertEqual(len(installs), 1)
         self.assertIn("apt-get install -y --reinstall --no-remove -- ", installs[0])
         self.assertIn("/nvidia-dkms-open.deb", installs[0])
         self.assertIn("/cuda-toolkit-13-5.deb", installs[0])
-        self.assertIn("/libnccl2.deb", installs[1])
         self.assertLess(calls.index("cuda-source ubuntu2604 sbsa disabled"), calls.index(installs[0]))
-        self.assertLess(calls.index(installs[1]), calls.index("cuda-source ubuntu2604 sbsa dcgm"))
+        self.assertLess(calls.index(installs[0]), calls.index("cuda-source ubuntu2604 sbsa dcgm"))
+        self.assertNotIn("install_nccl.sh", (self.root / "install-order").read_text())
         self.assert_restored()
 
     def run_private_reinstall(self, **overrides):
@@ -620,13 +624,18 @@ class UpgradeTest(unittest.TestCase):
         self.assertIn("Checksum verification failed", result.stdout)
         self.assertFalse((self.root / "install-order").exists())
 
-    def test_missing_nccl_repository_stops_before_installer(self):
+    def test_missing_nccl_repository_does_not_affect_refresh(self):
         repository = next((self.repo / "internal_bits").glob("nccl-local-repo-*.deb"))
         repository.unlink()
         result = self.run_upgrade()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("install_nccl.sh", (self.root / "install-order").read_text())
+
+    def test_unintended_nccl_version_change_is_rejected(self):
+        result = self.run_upgrade(CHANGE_NCCL="1")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Missing private input/checksum: nccl-local-repo-", result.stderr)
-        self.assertFalse((self.root / "install-order").exists())
+        self.assertIn("NCCL package versions changed", result.stderr)
+        self.assert_restored()
 
     def test_private_nccl_repository_installs_exact_versions(self):
         source = (REPO / "components/install_nccl.sh").read_text()

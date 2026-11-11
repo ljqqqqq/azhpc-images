@@ -16,8 +16,8 @@ prepare_image_settings() {
     # upgraded, including already-held OFED/driver dependencies.
     while IFS= read -r package; do
         case "$package" in
-            nvidia-container*|libnvidia-container*) continue ;;
-            nvidia-*|libnvidia-*|cuda-*|doca-*|mlnx-*|libnccl*|gdrdrv-dkms*|libgdrapi*|gdrcopy*|\
+            nvidia-container*|libnvidia-container*|libnccl*) continue ;;
+            nvidia-*|libnvidia-*|cuda-*|doca-*|mlnx-*|gdrdrv-dkms*|libgdrapi*|gdrcopy*|\
             rdma-core*|libibverbs*|ibverbs-*|librdmacm*|libibumad*|libibmad*|iser-dkms*|isert-dkms*|srp-dkms*)
                 apt-mark unhold "$package" ;;
         esac
