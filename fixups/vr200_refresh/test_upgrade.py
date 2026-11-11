@@ -32,11 +32,21 @@ elif name == 'dpkg':
     if args == ['--print-architecture']: print('arm64')
     elif args != ['--audit']: sys.exit(90)
 elif name == 'dpkg-deb':
+    if args[0] == '--show':
+        if os.environ.get('FAIL_DEB_QUERY'): sys.exit(42)
+        metadata = json.loads(pathlib.Path(args[-1]).read_text())
+        print('\t'.join(metadata[field] for field in ('Package', 'Version', 'Architecture')))
+        sys.exit()
     assert args[0] == '-f' and args[2] == 'Package'
     print(os.environ.get('REPO_DEB_PACKAGE', 'nvidia-driver-local-repo-ubuntu2604-620.70.06'))
 elif name == 'dpkg-query':
     if args[-1].startswith('-f='):
-        if 'Status-Status' in args[-1]:
+        if 'Architecture' in args[-1]:
+            if os.environ.get('FAIL_INVENTORY'): sys.exit(42)
+            packages = json.loads((root / 'packages.json').read_text())
+            print('\n'.join(package + '\t' + version + '\tarm64\tinstalled'
+                            for package, version in packages.items()))
+        elif 'Status-Status' in args[-1]:
             repositories = json.loads((root / 'repo-packages.json').read_text())
             print('\n'.join(package + '\t' + status for package, status in repositories.items()))
         else: print('base-package\t1.0')
@@ -119,6 +129,7 @@ elif name in ('apt-get', 'apt'):
     if os.environ.get('REMOVE_OLD_PACKAGE') and 'install' in args:
         (root / 'removed-packages.json').write_text(json.dumps([os.environ['REMOVE_OLD_PACKAGE']]))
     if os.environ.get('FAIL_APT') and 'install' in args: sys.exit(42)
+    if '--no-remove' in args and os.environ.get('FAIL_PRIVATE_REINSTALL'): sys.exit(42)
 elif name == 'ofed_info': print('MLNX_OFED_LINUX-26.01-2.0.0.0.617:')
 elif name == 'sudo':
     assert args[:2] == ['tee', '-a'] and str(root) in args[-1]
@@ -203,12 +214,16 @@ class UpgradeTest(unittest.TestCase):
         for file in ("fixups/upgrade_ubuntu2604_vr200.sh", "fixups/vr200_refresh/preserve_settings.sh",
                      "fixups/vr200_refresh/verify_versions.sh", "fixups/vr200_refresh/remove_nolpi.sh",
                      "fixups/vr200_refresh/refresh_nvidia_repo.sh",
+                     "fixups/vr200_refresh/reinstall_private_packages.sh",
                      "utils/utilities.sh"):
             source = (REPO / file).read_text()
             source = re.sub(r"/(?:var/tmp|var|tmp|etc|opt|boot|usr/sbin|usr/local|usr/share/keyrings|run/systemd|lib/modules)(?=[/\"'\s]|$)",
                             lambda match: str(self.root) + match[0], source)
             # Only the fixture copy omits the root guard, so tests run unprivileged.
             source = source.replace("[[ ${EUID} -eq 0 ]]", "true")
+            if file == "utils/utilities.sh":
+                # Repository filtering has its own tests; never use real APT/network here.
+                source += '\nconfigure_cuda_online_repo() { echo "cuda-source $*" >> "$MOCK_ROOT/calls.log"; }\n'
             self.put("repo/" + file, source)
         versions = json.loads((REPO / "versions.json").read_text())
         config = lambda name: versions[name]["ubuntu26.04"]["aarch64"]["azure_vm_regular"]["nvidia_vr200"]
@@ -231,6 +246,14 @@ class UpgradeTest(unittest.TestCase):
                          "libnccl-dev": config("nccl")["version"]})
         packages.update({name + "-dkms": OFED for name in ("mlnx-ofed-kernel", "iser", "isert", "srp")})
         self.put("packages.json", json.dumps(packages))
+        for component, package in (("nvidia", "nvidia-dkms-open"), ("cuda", "cuda-toolkit-13-5"),
+                                   ("nccl", "libnccl2")):
+            data = config(component)
+            if component in ("nvidia", "cuda"):
+                data = data["driver"]
+            directory = "var/" + data["repo_file"].split("_")[0]
+            self.put(directory + "/" + package + ".deb",
+                     json.dumps({"Package": package, "Version": packages[package], "Architecture": "arm64"}))
         self.put("etc/os-release", "ID=ubuntu\nVERSION_ID=26.04\n")
         self.put("etc/default/grub", 'GRUB_CMDLINE_LINUX_DEFAULT="quiet irqchip.gicv3_nolpi=y"\n')
         self.put("etc/default/grub.d/50-cloudimg-settings.cfg",
@@ -525,6 +548,61 @@ class UpgradeTest(unittest.TestCase):
 
     def test_nvidia_repo_purge_failure_stops_before_driver(self):
         result = self.run_upgrade(FAIL_REPO_PURGE="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assert_restored()
+        self.assertEqual((self.root / "install-order").read_text().splitlines(), ["install_doca.sh"])
+
+    def test_same_version_private_packages_are_reinstalled_from_archives(self):
+        result = self.run_upgrade()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = (self.root / "calls.log").read_text()
+        installs = [line for line in calls.splitlines() if '--no-remove' in line]
+        self.assertEqual(len(installs), 2)
+        self.assertIn("apt-get install -y --reinstall --no-remove -- ", installs[0])
+        self.assertIn("/nvidia-dkms-open.deb", installs[0])
+        self.assertIn("/cuda-toolkit-13-5.deb", installs[0])
+        self.assertIn("/libnccl2.deb", installs[1])
+        self.assertLess(calls.index("cuda-source ubuntu2604 sbsa disabled"), calls.index(installs[0]))
+        self.assertLess(calls.index(installs[1]), calls.index("cuda-source ubuntu2604 sbsa dcgm"))
+        self.assert_restored()
+
+    def run_private_reinstall(self, **overrides):
+        env = dict(self.env, APT_CONFIG=str(self.put("apt.conf", 'Dpkg::Options { "--force-confnew"; };\n')),
+                   UCF_FORCE_CONFFNEW="1", NEEDRESTART_MODE="l")
+        env.pop("UCF_FORCE_CONFFOLD", None)
+        return subprocess.run(["bash", str(self.repo / "fixups/vr200_refresh/reinstall_private_packages.sh"),
+                               str(self.root / "var" / NVIDIA_REPO)],
+                              env=dict(env, **overrides), capture_output=True, text=True, timeout=30)
+
+    def test_private_reinstall_skips_uninstalled_other_versions_and_architectures(self):
+        for package, version, arch in (("not-installed", "1", "arm64"),
+                                       ("nvidia-modprobe", "old-version", "arm64"),
+                                       ("libnvidia-cfg1", "620.70.06-1ubuntu1", "amd64")):
+            self.put(f"var/{NVIDIA_REPO}/{package}.deb",
+                     json.dumps({"Package": package, "Version": version, "Architecture": arch}))
+        result = self.run_private_reinstall()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        install = next(line for line in (self.root / "calls.log").read_text().splitlines()
+                       if '--no-remove' in line)
+        self.assertIn("/nvidia-dkms-open.deb", install)
+        for name in ("not-installed.deb", "nvidia-modprobe.deb", "libnvidia-cfg1.deb"):
+            self.assertNotIn(name, install)
+
+    def test_private_reinstall_inventory_or_archive_query_failure_stops(self):
+        for failure in ("FAIL_INVENTORY", "FAIL_DEB_QUERY"):
+            with self.subTest(failure=failure):
+                result = self.run_private_reinstall(**{failure: "1"})
+                self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("apt-get install", (self.root / "calls.log").read_text())
+
+    def test_private_reinstall_requires_nonempty_repository(self):
+        (self.root / "var" / NVIDIA_REPO / "nvidia-dkms-open.deb").unlink()
+        result = self.run_private_reinstall()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no package archives", result.stderr)
+
+    def test_private_reinstall_failure_stops_before_driver_and_restores_settings(self):
+        result = self.run_upgrade(FAIL_PRIVATE_REINSTALL="1")
         self.assertNotEqual(result.returncode, 0)
         self.assert_restored()
         self.assertEqual((self.root / "install-order").read_text().splitlines(), ["install_doca.sh"])

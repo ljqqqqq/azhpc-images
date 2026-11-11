@@ -132,10 +132,17 @@ run_component install_doca.sh 2>&1 | tee "${VR200_REPORT_DIR}/doca.log"
 apt-get install -y --reinstall "${TOP_DIR}/internal_bits/$(jq -r '.driver.repo_file' <<< "$cuda_metadata")" \
     2>&1 | tee "${VR200_REPORT_DIR}/cuda-repo.log"
 bash "${TOP_DIR}/fixups/vr200_refresh/refresh_nvidia_repo.sh" 2>&1 | tee "${VR200_REPORT_DIR}/nvidia-repo.log"
+bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
+    "/var/$(jq -r '.driver.repo_file' <<< "$nvidia_metadata" | cut -d_ -f1)" \
+    "/var/$(jq -r '.driver.repo_file' <<< "$cuda_metadata" | cut -d_ -f1)" \
+    2>&1 | tee "${VR200_REPORT_DIR}/private-packages.log"
 run_component install_nvidiagpudriver.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvidia.log"
 move_previous_paths "${nccl_paths[@]}"
 run_component install_nccl.sh 2>&1 | tee "${VR200_REPORT_DIR}/nccl.log"
 nccl_completed=true
+bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
+    "/var/$(jq -r '.repo_file' <<< "$nccl_metadata" | cut -d_ -f1)" \
+    2>&1 | tee -a "${VR200_REPORT_DIR}/private-packages.log"
 move_previous_paths "$nvbandwidth_path"
 run_component install_nvbandwidth_tool.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvbandwidth.log"
 nvbandwidth_completed=true
