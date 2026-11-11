@@ -30,6 +30,7 @@ if [[ -n "${1:-}" ]]; then tar -xzf "$1" -C "$TOP_DIR"; fi
 nvidia_metadata=$(get_component_config nvidia)
 cuda_metadata=$(get_component_config cuda)
 doca_metadata=$(get_component_config doca)
+nccl_metadata=$(get_component_config nccl)
 nvbandwidth_metadata=$(get_component_config nvbandwidth)
 verify_bit() {
     local file=$1 checksum=$2
@@ -39,12 +40,13 @@ verify_bit() {
 }
 jq -e '.driver.source == "private"' <<< "$nvidia_metadata" >/dev/null
 jq -e '.driver.source == "private"' <<< "$cuda_metadata" >/dev/null
-for metadata in "$doca_metadata" "$nvbandwidth_metadata"; do
+for metadata in "$doca_metadata" "$nccl_metadata" "$nvbandwidth_metadata"; do
     jq -e '.source == "private"' <<< "$metadata" >/dev/null
 done
 verify_bit "$(jq -r '.driver.repo_file' <<< "$nvidia_metadata")" "$(jq -r '.driver.sha256' <<< "$nvidia_metadata")"
 verify_bit "$(jq -r '.driver.repo_file' <<< "$cuda_metadata")" "$(jq -r '.driver.sha256' <<< "$cuda_metadata")"
 verify_bit "$(jq -r '.repo_file' <<< "$doca_metadata")" "$(jq -r '.sha256' <<< "$doca_metadata")"
+verify_bit "$(jq -r '.repo_file' <<< "$nccl_metadata")" "$(jq -r '.sha256' <<< "$nccl_metadata")"
 verify_bit "$(jq -r '.binary_file' <<< "$nvbandwidth_metadata")" "$(jq -r '.sha256' <<< "$nvbandwidth_metadata")"
 [[ -d "/lib/modules/$(uname -r)/build" ]] || { echo 'Running-kernel headers are missing.' >&2; exit 1; }
 bash -e -c 'source /etc/profile.d/modules.sh; module load mpi/hpcx; test -d "$HPCX_MPI_DIR"; test -d "$HPCX_SHARP_DIR"; test -d "$HPCX_UCX_DIR"'
@@ -55,7 +57,9 @@ export VR200_REPORT_DIR="/var/tmp/azhpc-image-evidence/${IMAGE_EVIDENCE_RUN_NAME
 install -d -m 0700 "$VR200_REPORT_DIR"
 settings_saved=false
 settings_restored=false
+nccl_completed=false
 nvbandwidth_completed=false
+nccl_paths=(/tmp/nccl-tests /tmp/nccl-rdma-sharp-plugins /opt/nccl-tests /usr/local/nccl-rdma-sharp-plugins)
 nvbandwidth_path=/opt/nvidia/nvbandwidth
 
 cleanup() {
@@ -65,15 +69,24 @@ cleanup() {
     if [[ "$settings_saved" == true && "$settings_restored" != true ]]; then
         restore_image_settings || rc=1
     fi
+    # Restore scratch directories and any directories whose installer failed.
     # Successful directory replacements and package upgrades are not rolled back.
-    for path in "$nvbandwidth_path"; do
-        [[ "$nvbandwidth_completed" != true ]] || continue
+    for path in "${nccl_paths[@]}" "$nvbandwidth_path"; do
+        case "$path" in
+            /opt/nccl-tests|/usr/local/nccl-rdma-sharp-plugins)
+                [[ "$nccl_completed" != true ]] || continue ;;
+            "$nvbandwidth_path")
+                [[ "$nvbandwidth_completed" != true ]] || continue ;;
+        esac
         if [[ -e "${VR200_STATE_DIR}/previous${path}" || -L "${VR200_STATE_DIR}/previous${path}" ]]; then
             if [[ -e "$path" || -L "$path" ]]; then
                 mkdir -p "$(dirname "${VR200_STATE_DIR}/generated${path}")"
                 mv "$path" "${VR200_STATE_DIR}/generated${path}" || rc=1
             fi
             mv "${VR200_STATE_DIR}/previous${path}" "$path" || rc=1
+            if [[ "$path" == /usr/local/nccl-rdma-sharp-plugins ]]; then
+                ldconfig || rc=1
+            fi
         fi
     done
     if [[ $rc -eq 0 ]]; then rm -rf -- "$VR200_STATE_DIR"; else
@@ -124,7 +137,12 @@ bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
     "/var/$(jq -r '.driver.repo_file' <<< "$cuda_metadata" | cut -d_ -f1)" \
     2>&1 | tee "${VR200_REPORT_DIR}/private-packages.log"
 run_component install_nvidiagpudriver.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvidia.log"
-# Preserve the base image's NCCL packages, plugin and test binaries.
+move_previous_paths "${nccl_paths[@]}"
+run_component install_nccl.sh 2>&1 | tee "${VR200_REPORT_DIR}/nccl.log"
+nccl_completed=true
+bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
+    "/var/$(jq -r '.repo_file' <<< "$nccl_metadata" | cut -d_ -f1)" \
+    2>&1 | tee -a "${VR200_REPORT_DIR}/private-packages.log"
 move_previous_paths "$nvbandwidth_path"
 run_component install_nvbandwidth_tool.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvbandwidth.log"
 nvbandwidth_completed=true
@@ -144,8 +162,4 @@ update-initramfs -u -k all
 bash "${TOP_DIR}/fixups/vr200_refresh/remove_nolpi.sh" 2>&1 | tee "${VR200_REPORT_DIR}/remove-nolpi.log"
 bash "${TOP_DIR}/fixups/vr200_refresh/verify_versions.sh" 2>&1 | tee "${VR200_REPORT_DIR}/verify-versions.log"
 dpkg-query -W -f='${binary:Package}\t${Version}\n' | sort > "${VR200_REPORT_DIR}/packages-after.tsv"
-diff -u <(awk '$1 ~ /^libnccl/' "${VR200_REPORT_DIR}/packages-before.tsv") \
-    <(awk '$1 ~ /^libnccl/' "${VR200_REPORT_DIR}/packages-after.tsv") || {
-    echo 'ERROR: NCCL package versions changed during refresh.' >&2; exit 1;
-}
 echo '##[section]Target components upgraded in place. Reboot before GPU/RDMA runtime validation.'

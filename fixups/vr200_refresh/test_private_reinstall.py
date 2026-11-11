@@ -84,12 +84,6 @@ source "$script"
         self.assertFalse(self.log.exists())
         self.assertIn("component installers handle upgrades", result.stdout)
 
-    def test_nccl_is_preserved_even_if_present_in_private_cuda_repository(self):
-        self.archive("libnccl2", "1", "arm64")
-        result = self.run_reinstall("driver\t1\tarm64\tinstalled\nlibnccl2\t1\tarm64\tinstalled")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertNotIn("libnccl2", self.log.read_text())
-
     def test_empty_repository_is_an_error(self):
         (self.repo / "driver-arm64.deb").unlink()
         result = self.run_reinstall()

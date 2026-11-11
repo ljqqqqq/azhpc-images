@@ -29,6 +29,7 @@ check_dkms() {
 nvidia_metadata=$(get_component_config nvidia)
 cuda_metadata=$(get_component_config cuda)
 doca_metadata=$(get_component_config doca)
+nccl_metadata=$(get_component_config nccl)
 nvbandwidth_metadata=$(get_component_config nvbandwidth)
 driver_version=$(jq -r '.driver.version' <<< "$nvidia_metadata")
 for name in nvidia-dkms-open nvidia-headless-open nvidia-headless-no-dkms-open \
@@ -40,6 +41,8 @@ check_package nvidia-imex-direct "$(jq -r '.imex.version' <<< "$nvidia_metadata"
 cuda_version=$(jq -r '.driver.version' <<< "$cuda_metadata")
 check_package "cuda-toolkit-${cuda_version//./-}" "$(jq -r '.driver.package_version' <<< "$cuda_metadata")"
 check_package doca-ofed "$(jq -r '.package_version' <<< "$doca_metadata")"
+check_package libnccl2 "$(jq -r '.version' <<< "$nccl_metadata")"
+check_package libnccl-dev "$(jq -r '.version' <<< "$nccl_metadata")"
 
 # Check the exact new NVIDIA version for the running kernel; an old installed
 # DKMS registration must not make the upgrade appear successful.

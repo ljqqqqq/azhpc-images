@@ -28,7 +28,6 @@ for directory in "$@"; do
         [[ -n "$package" && -n "$version" && -n "$architecture" ]] || {
             echo "ERROR: incomplete package metadata: ${archive}" >&2; exit 1;
         }
-        case "$package" in libnccl*) continue ;; esac
         if [[ "${installed["${package}:${architecture}"]:-}" == "$version" ]]; then
             archives+=("$archive")
             echo "Reinstalling private package: ${package}:${architecture}=${version}"
