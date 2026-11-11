@@ -64,7 +64,7 @@ apt-get() {
 apt-cache() { printf '%s\n' "$TEST_PACKAGES"; }
 dpkg-query() { echo 3.2.1; }
 dpkg() { [[ -z "$TEST_OLD_APT" ]]; }
-cuda_online_repo ubuntu2604 sbsa "$2"
+configure_cuda_online_repo ubuntu2604 sbsa "$2"
 '''
         return subprocess.run(
             [os.environ.get("BASH", "bash"), "-c", script, "bash",
