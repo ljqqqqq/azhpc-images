@@ -143,6 +143,76 @@ write_repo_source_info(){
 }
 
 ############################################################################
+# Configure the CUDA public APT source. Private stacks disable it until DCGM,
+# which gets an exact package allowlist rather than competing driver/toolkit copies.
+configure_cuda_apt_repo() (
+    set -euo pipefail
+    local distribution=$1 architecture=$2 mode=$3
+    local source_name="cuda-${distribution}-${architecture}"
+    local source_file="/etc/apt/sources.list.d/${source_name}.list"
+    local modern_source_file="/etc/apt/sources.list.d/${source_name}.sources"
+    local repo_url="https://developer.download.nvidia.com/compute/cuda/repos/${distribution}/${architecture}"
+    local keyring=/usr/share/keyrings/cuda-archive-keyring.gpg
+    local work_dir packages package_names
+
+    case "$mode" in
+        disabled)
+            rm -f "$source_file" "$modern_source_file"
+            apt-get update
+            return
+            ;;
+        public|dcgm) ;;
+        *)
+            echo "ERROR: unsupported CUDA APT repository mode: $mode" >&2
+            return 1
+            ;;
+    esac
+
+    if [[ "$mode" == dcgm ]] &&
+       ! dpkg --compare-versions "$(dpkg-query -W -f='${Version}' apt)" ge 3.2; then
+        echo "ERROR: DCGM-only CUDA repository requires APT 3.2 or newer for Include filtering." >&2
+        return 1
+    fi
+
+    if [[ "$mode" == dcgm ]]; then
+        rm -f "$source_file" "$modern_source_file"
+        apt-get update
+    fi
+
+    work_dir=$(mktemp -d)
+    trap 'rc=$?; if [[ "$mode" == dcgm && "$rc" -ne 0 ]]; then rm -f "$source_file" "$modern_source_file"; fi; rm -rf "$work_dir"; exit "$rc"' EXIT
+    wget -O "$work_dir/cuda-keyring.deb" "${repo_url}/cuda-keyring_1.1-1_all.deb"
+    apt install -y "$work_dir/cuda-keyring.deb"
+    rm -f "$source_file" "$modern_source_file"
+
+    if [[ "$mode" == public ]]; then
+        printf 'deb [signed-by=%s] %s/ /\n' "$keyring" "$repo_url" > "$source_file"
+    else
+        # Include accepts exact names, not globs. Discover DCGM packages using
+        # isolated indexes; never expose the unrestricted source to an install.
+        mkdir -p "$work_dir/lists/partial"
+        printf 'deb [signed-by=%s] %s/ /\n' "$keyring" "$repo_url" > "$work_dir/cuda.list"
+        local -a apt_options=(
+            -o "Dir::Etc::sourcelist=$work_dir/cuda.list"
+            -o "Dir::Etc::sourceparts=-"
+            -o "Dir::State::lists=$work_dir/lists"
+            -o "Dir::Cache::pkgcache=$work_dir/pkgcache.bin"
+            -o "Dir::Cache::srcpkgcache=$work_dir/srcpkgcache.bin"
+        )
+        apt-get "${apt_options[@]}" -o APT::Update::Error-Mode=any update
+        package_names=$(apt-cache "${apt_options[@]}" pkgnames)
+        packages=$(awk '/^datacenter-gpu-manager-/ || /^libdcgm([0-9]+)?(-[a-z0-9-]+)?$/ || /^(dcgmi|nv-hostengine)$/' \
+            <<< "$package_names" | sort -u | paste -sd ',')
+        if [[ -z "$packages" ]]; then
+            echo "ERROR: no DCGM packages found in $repo_url" >&2
+            return 1
+        fi
+        printf 'deb [signed-by=%s include=%s] %s/ /\n' "$keyring" "$packages" "$repo_url" > "$source_file"
+    fi
+    apt-get update
+)
+
+############################################################################
 # @Brief	: Download the file and verify its checksum
 #
 # @Args		: (1) Download URL
