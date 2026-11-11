@@ -78,14 +78,13 @@ elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         CUDA_ARCHITECTURE="x86_64"
     fi
     if [ "$CUDA_SOURCE" = "private" ]; then
+        configure_cuda_apt_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" disabled
         NVIDIA_CUDA_REPO_FILE=$(jq -r '.driver.repo_file' <<< $cuda_metadata)
         NVIDIA_CUDA_REPO_SHA256=$(jq -r '.driver.sha256' <<< $cuda_metadata)
         install_from_cuda_local_repo "$NVIDIA_CUDA_REPO_FILE" "$NVIDIA_CUDA_REPO_SHA256"
+    else
+        configure_cuda_apt_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" public
     fi
-    # Add NVIDIA CUDA APT repo (provides both driver and toolkit packages)
-    wget https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DRIVER_DISTRIBUTION}/${CUDA_ARCHITECTURE}/cuda-keyring_1.1-1_all.deb
-    apt install -y ./cuda-keyring_1.1-1_all.deb
-    apt-get update
 
     NVIDIA_DRIVER_SOURCE=$(jq -r '.driver.source' <<< $nvidia_metadata)
     if _is_mrc_network || [ "$NVIDIA_DRIVER_SOURCE" = "private" ]; then
