@@ -114,7 +114,7 @@ if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         else
             CUDA_REPO_ARCHITECTURE=x86_64
         fi
-        cuda_online_repo "$CUDA_REPO_DISTRIBUTION" "$CUDA_REPO_ARCHITECTURE" dcgm
+        configure_cuda_online_repo "$CUDA_REPO_DISTRIBUTION" "$CUDA_REPO_ARCHITECTURE" dcgm
     fi
     if [[ $DISTRIBUTION == "ubuntu26.04" &&
           ( "${SKU}" != "VR200" || "${TARGET_NODE_TYPE:-azure_vm_regular}" != azure_vm_* ) ]]; then

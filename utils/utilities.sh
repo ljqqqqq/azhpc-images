@@ -145,7 +145,7 @@ write_repo_source_info(){
 ############################################################################
 # Configure the CUDA public APT source. Private stacks disable it until DCGM,
 # which gets an exact package allowlist rather than competing driver/toolkit copies.
-cuda_online_repo() (
+configure_cuda_online_repo() (
     set -euo pipefail
     local distribution=$1 architecture=$2 mode=$3
     local source_name="cuda-${distribution}-${architecture}"
