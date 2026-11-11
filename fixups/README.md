@@ -2,16 +2,16 @@
 
 `upgrade_ubuntu2604_vr200.sh` updates an existing Ubuntu 26.04 arm64 NVIDIA
 VR200 HPC image (`TARGET_NODE_TYPE=azure_vm_regular`) using
-`u26_vr200_internal_1_0_0.tar.gz` and the matching entries in `versions.json`.
+`u26_vr200_internal_1_0_0_DEV2.tar.gz` and the matching entries in `versions.json`.
 It requires the running kernel's headers and an existing `mpi/hpcx` module.
 
 | Component | Target from the supplied archive |
 | --- | --- |
-| NVIDIA driver | 620.62-1ubuntu1 |
+| NVIDIA driver | 620.70.06-1ubuntu1 |
 | CUDA toolkit | 13.5.0-1 |
-| IMEX | 2.0.0.rel47-1 |
-| DOCA OFED | 3.3.3-021000 |
-| NCCL | 2.32.4gr100+1.0.1-1+cuda13.5 |
+| IMEX | 2.0.0.rel49-1 |
+| DOCA OFED | 3.3.3-036000 |
+| NCCL | 2.32.5-1+cuda13.5 |
 | nvbandwidth | nvbandwidth_main_0.10_v6 |
 
 This is an APT in-place upgrade. It does not purge component packages, explicitly
@@ -29,7 +29,7 @@ recorded in the before/after package inventories.
 
 ## Execution order
 
-1. Check the platform, all six required private input files and SHA256 hashes,
+1. Check the platform, all five required private input files and SHA256 hashes,
    running-kernel headers, and inherited HPC-X MPI/SHARP/UCX paths.
 2. Save package inventory, holds, and the original `policy-rc.d`, if present.
    Temporarily release holds on target component families and suppress
@@ -37,7 +37,7 @@ recorded in the before/after package inventories.
 3. Call `components/install_doca.sh` to upgrade DOCA OFED and its dependencies
    with `apt-get -y install doca-ofed`, without an explicit package version.
    Record the actual installed version; APT selects the candidate from configured
-   repositories. The supplied DOCA repository contains `3.3.3-021000`.
+   repositories. The supplied DOCA repository contains `3.3.3-036000`.
 4. Reinstall the local CUDA repository package: its contents changed even
    though the filename and Debian version stayed the same.
 5. Run `vr200_refresh/refresh_nvidia_repo.sh` to reinstall the supplied NVIDIA
@@ -45,7 +45,9 @@ recorded in the before/after package inventories.
    refresh APT indexes. Save output as `upgrade/nvidia-repo.log`.
    Call `components/install_nvidiagpudriver.sh` to upgrade the driver, CUDA and
    IMEX. This also rebuilds CUDA samples and GDRCopy using existing metadata.
-6. Call `components/install_nccl.sh` to upgrade NCCL and rebuild the RDMA SHARP
+6. Call `components/install_nccl.sh` to reinstall the supplied NCCL local APT
+   repository, install its keyring, refresh APT indexes, and install the exact
+   `libnccl2`/`libnccl-dev` versions in `versions.json`. Rebuild the RDMA SHARP
    plugin and nccl-tests against the inherited HPC-X. Existing temporary clone
    directories are saved and restored; `/opt/nccl-tests` and
    `/usr/local/nccl-rdma-sharp-plugins` are replaced as whole directories.
@@ -63,7 +65,7 @@ recorded in the before/after package inventories.
     nvbandwidth checksum, and APT/dpkg package health. Save the final inventory.
     DOCA installation does not specify a version, but verification requires the
     installed `doca-ofed` version to equal `package_version` in `versions.json`
-    (currently `3.3.3-021000`). The OFED DKMS versions must match its installed
+    (currently `3.3.3-036000`). The OFED DKMS versions must match its installed
     dependencies. DKMS accepts `installed` with the benign
     `(Original modules exist)` suffix, while other warnings or states fail.
 
@@ -116,7 +118,7 @@ Either configure the normal internal-bits blob download, which now also works
 in refresh mode, or stage the supplied local archive before starting Packer:
 
 ```powershell
-tar -xzf "C:\Users\ljiaqi\Downloads\u26_vr200_internal_1_0_0.tar.gz" -C "C:\Repo\hpcimagebuild\jq-official\azhpc-images"
+tar -xzf "C:\Users\ljiaqi\Downloads\u26_vr200_internal_1_0_0_DEV2.tar.gz" -C "C:\Repo\hpcimagebuild\jq-official\azhpc-images"
 ```
 
 For locally staged bits, leave `INTERNAL_BITS_CONTAINER_NAME` and
@@ -133,7 +135,7 @@ export, so retrieve its reports from the failed build VM if retained.
 ## Direct invocation on the Linux build VM
 
 ```bash
-sudo bash fixups/upgrade_ubuntu2604_vr200.sh /path/to/u26_vr200_internal_1_0_0.tar.gz
+sudo bash fixups/upgrade_ubuntu2604_vr200.sh /path/to/u26_vr200_internal_1_0_0_DEV2.tar.gz
 ```
 
 Omit the argument when `internal_bits/` is already staged. Direct reports default

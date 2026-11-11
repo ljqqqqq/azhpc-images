@@ -35,15 +35,16 @@ fi
 pushd /tmp
 if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
     if [[ "$NCCL_SOURCE" == "private" ]]; then
-        NCCL_RUNTIME_FILE="libnccl2_${NCCL_VERSION}_${ARCHITECTURE_DISTRO}.deb"
-        NCCL_DEV_FILE="libnccl-dev_${NCCL_VERSION}_${ARCHITECTURE_DISTRO}.deb"
-        NCCL_RUNTIME_SHA256=$(jq -r '.runtime_sha256' <<< $nccl_metadata)
-        NCCL_DEV_SHA256=$(jq -r '.dev_sha256' <<< $nccl_metadata)
-        verify_checksum "$TOP_DIR/internal_bits/$NCCL_RUNTIME_FILE" "$NCCL_RUNTIME_SHA256"
-        verify_checksum "$TOP_DIR/internal_bits/$NCCL_DEV_FILE" "$NCCL_DEV_SHA256"
+        NCCL_REPO_FILE=$(jq -r '.repo_file' <<< "$nccl_metadata")
+        NCCL_REPO_DIR=${NCCL_REPO_FILE%%_*}
+        verify_checksum "$TOP_DIR/internal_bits/$NCCL_REPO_FILE" "$NCCL_SHA256"
+        apt-get install -y --reinstall "$TOP_DIR/internal_bits/$NCCL_REPO_FILE"
+        install -d /usr/share/keyrings
+        install -m 0644 /var/"$NCCL_REPO_DIR"/nccl-local-*-keyring.gpg /usr/share/keyrings/
+        apt-get update
         apt install -y \
-            "$TOP_DIR/internal_bits/$NCCL_RUNTIME_FILE" \
-            "$TOP_DIR/internal_bits/$NCCL_DEV_FILE"
+            "libnccl2=${NCCL_VERSION}" \
+            "libnccl-dev=${NCCL_VERSION}"
     else
         apt-get install -y libnccl2 libnccl-dev
     fi

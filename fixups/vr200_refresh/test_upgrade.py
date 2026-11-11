@@ -16,7 +16,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[2]
 OFED = "26.01.OFED.26.01.2.0.0.0.617.1-1"
-NVIDIA_REPO = "nvidia-driver-local-repo-ubuntu2604-620.62"
+NVIDIA_REPO = "nvidia-driver-local-repo-ubuntu2604-620.70.06"
 
 MOCK_TOOL = r'''#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -33,7 +33,7 @@ elif name == 'dpkg':
     elif args != ['--audit']: sys.exit(90)
 elif name == 'dpkg-deb':
     assert args[0] == '-f' and args[2] == 'Package'
-    print(os.environ.get('REPO_DEB_PACKAGE', 'nvidia-driver-local-repo-ubuntu2604-620.62'))
+    print(os.environ.get('REPO_DEB_PACKAGE', 'nvidia-driver-local-repo-ubuntu2604-620.70.06'))
 elif name == 'dpkg-query':
     if args[-1].startswith('-f='):
         if 'Status-Status' in args[-1]:
@@ -79,7 +79,7 @@ elif name == 'dkms':
     state = os.environ.get('DKMS_STATE', 'installed')
     suffix = os.environ.get('DKMS_SUFFIX', '' if module == 'nvidia' else ' (Original modules exist)')
     print(f'{module}/{version}, {kernel}, aarch64: {state}{suffix}')
-elif name == 'modinfo': print('620.62')
+elif name == 'modinfo': print('620.70.06')
 elif name in ('apt-get', 'apt'):
     assert (args in (['check'], ['update'], ['-y', 'install', 'doca-ofed'])
             or args[:3] == ['install', '-y', '--reinstall']
@@ -98,13 +98,13 @@ elif name in ('apt-get', 'apt'):
         removed = json.loads((root / 'removed-packages.json').read_text())
         for package in args[3:]:
             assert package.startswith('nvidia-driver-local-repo-')
-            assert package != 'nvidia-driver-local-repo-ubuntu2604-620.62'
+            assert package != 'nvidia-driver-local-repo-ubuntu2604-620.70.06'
             repositories[package] = 'not-installed'
             removed.append(package)
         (root / 'repo-packages.json').write_text(json.dumps(repositories))
         (root / 'removed-packages.json').write_text(json.dumps(removed))
     elif args[:3] == ['install', '-y', '--reinstall'] and pathlib.Path(args[-1]).name.startswith('nvidia-driver-local-repo-'):
-        package = 'nvidia-driver-local-repo-ubuntu2604-620.62'
+        package = 'nvidia-driver-local-repo-ubuntu2604-620.70.06'
         directory = root / 'var' / package
         directory.mkdir(parents=True, exist_ok=True)
         (directory / 'nvidia-driver-local-new-keyring.gpg').write_text('new keyring\n')
@@ -112,6 +112,10 @@ elif name in ('apt-get', 'apt'):
         repositories = json.loads((root / 'repo-packages.json').read_text())
         repositories[package] = 'installed'
         (root / 'repo-packages.json').write_text(json.dumps(repositories))
+    elif args[:3] == ['install', '-y', '--reinstall'] and pathlib.Path(args[-1]).name.startswith('nccl-local-repo-'):
+        directory = root / 'var' / pathlib.Path(args[-1]).name.split('_')[0]
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / 'nccl-local-test-keyring.gpg').write_text('NCCL keyring\n')
     if os.environ.get('REMOVE_OLD_PACKAGE') and 'install' in args:
         (root / 'removed-packages.json').write_text(json.dumps([os.environ['REMOVE_OLD_PACKAGE']]))
     if os.environ.get('FAIL_APT') and 'install' in args: sys.exit(42)
@@ -186,7 +190,7 @@ class UpgradeTest(unittest.TestCase):
         self.put("removed-packages.json", "[]")
         self.put("repo-packages.json", json.dumps({
             "nvidia-driver-local-repo-ubuntu2604-610.57.04": "installed",
-            "nvidia-driver-local-repo-ubuntu2604-580.167.08": "config-files",
+            "nvidia-driver-local-repo-ubuntu2604-620.62": "config-files",
             NVIDIA_REPO: "installed", "cuda-repo-ubuntu2604-13-5-local": "installed",
             "nvidia-container-toolkit": "installed"}))
         self.put(f"var/{NVIDIA_REPO}/contents", "old repository payload\n")
@@ -213,19 +217,17 @@ class UpgradeTest(unittest.TestCase):
         for component in ("nvidia", "cuda", "doca", "nccl", "nvbandwidth"):
             data = config(component)
             if component in ("nvidia", "cuda"): data = data["driver"]
-            for key in ("sha256", "runtime_sha256", "dev_sha256"):
+            for key in ("sha256",):
                 if key in data: data[key] = checksum
             names = [data[k] for k in ("repo_file", "binary_file") if k in data]
-            if component == "nccl":
-                names = [f"{name}_{data['version']}_arm64.deb" for name in ("libnccl2", "libnccl-dev")]
             for name in names: self.put("repo/internal_bits/" + name, payload)
         self.put("repo/versions.json", json.dumps(versions))
         driver_packages = ("nvidia-dkms-open nvidia-headless-open nvidia-headless-no-dkms-open "
                            "nvidia-kernel-common nvidia-firmware nvidia-modprobe nvidia-persistenced "
                            "libnvidia-compute libnvidia-cfg1 libnvidia-gpucomp libnvidia-imex1").split()
-        packages = dict.fromkeys(driver_packages, "620.62-1ubuntu1")
-        packages.update({"nvidia-imex-direct": "2.0.0.rel47-1", "cuda-toolkit-13-5": "13.5.0-1",
-                         "doca-ofed": "3.3.3-021000", "libnccl2": config("nccl")["version"],
+        packages = dict.fromkeys(driver_packages, config("nvidia")["driver"]["version"])
+        packages.update({"nvidia-imex-direct": config("nvidia")["imex"]["version"], "cuda-toolkit-13-5": "13.5.0-1",
+                         "doca-ofed": config("doca")["package_version"], "libnccl2": config("nccl")["version"],
                          "libnccl-dev": config("nccl")["version"]})
         packages.update({name + "-dkms": OFED for name in ("mlnx-ofed-kernel", "iser", "isert", "srp")})
         self.put("packages.json", json.dumps(packages))
@@ -489,7 +491,7 @@ class UpgradeTest(unittest.TestCase):
                 self.put("packages.json", json.dumps(packages))
                 result = self.run_verification()
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("doca-ofed: expected installed 3.3.3-021000", result.stderr)
+                self.assertIn("doca-ofed: expected installed 3.3.3-036000", result.stderr)
                 self.assertIn("found installed " + version, result.stderr)
 
     def test_unpinned_doca_installer_records_actual_version(self):
@@ -539,6 +541,36 @@ class UpgradeTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Checksum verification failed", result.stdout)
         self.assertFalse((self.root / "install-order").exists())
+
+    def test_missing_nccl_repository_stops_before_installer(self):
+        repository = next((self.repo / "internal_bits").glob("nccl-local-repo-*.deb"))
+        repository.unlink()
+        result = self.run_upgrade()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Missing private input/checksum: nccl-local-repo-", result.stderr)
+        self.assertFalse((self.root / "install-order").exists())
+
+    def test_private_nccl_repository_installs_exact_versions(self):
+        source = (REPO / "components/install_nccl.sh").read_text()
+        source = source.split("# Install the nccl rdma sharp plugin.")[0] + "\npopd\n"
+        source = re.sub(r"/(?:tmp|var|usr/share/keyrings)(?=[/\"'\s]|$)",
+                        lambda match: str(self.root) + match[0], source)
+        script = self.put("repo/components/install_nccl_packages.sh", source)
+        env = dict(self.env, TOP_DIR=str(self.repo), UTILS_DIR=str(self.repo / "utils"),
+                   DISTRIBUTION="ubuntu26.04", ARCHITECTURE="aarch64",
+                   COMPONENT_VERSIONS=(self.repo / "versions.json").read_text(),
+                   APT_CONFIG=str(self.put("apt.conf", 'Dpkg::Options { "--force-confnew"; };\n')),
+                   UCF_FORCE_CONFFNEW="1", NEEDRESTART_MODE="l")
+        env.pop("UCF_FORCE_CONFFOLD", None)
+        result = subprocess.run(["bash", str(script)], env=env, capture_output=True,
+                                text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = (self.root / "calls.log").read_text()
+        self.assertIn("apt-get install -y --reinstall " + str(self.repo / "internal_bits/nccl-local-repo-"), calls)
+        self.assertIn("apt-get update\n", calls)
+        self.assertIn("apt install -y libnccl2=2.32.5-1+cuda13.5 libnccl-dev=2.32.5-1+cuda13.5\n", calls)
+        self.assertEqual((self.root / "usr/share/keyrings/nccl-local-test-keyring.gpg").read_text(),
+                         "NCCL keyring\n")
 
     def run_remove_nolpi(self, **overrides):
         return subprocess.run(["bash", str(self.repo / "fixups/vr200_refresh/remove_nolpi.sh")],

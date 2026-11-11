@@ -46,9 +46,7 @@ done
 verify_bit "$(jq -r '.driver.repo_file' <<< "$nvidia_metadata")" "$(jq -r '.driver.sha256' <<< "$nvidia_metadata")"
 verify_bit "$(jq -r '.driver.repo_file' <<< "$cuda_metadata")" "$(jq -r '.driver.sha256' <<< "$cuda_metadata")"
 verify_bit "$(jq -r '.repo_file' <<< "$doca_metadata")" "$(jq -r '.sha256' <<< "$doca_metadata")"
-nccl_version=$(jq -r '.version' <<< "$nccl_metadata")
-verify_bit "libnccl2_${nccl_version}_arm64.deb" "$(jq -r '.runtime_sha256' <<< "$nccl_metadata")"
-verify_bit "libnccl-dev_${nccl_version}_arm64.deb" "$(jq -r '.dev_sha256' <<< "$nccl_metadata")"
+verify_bit "$(jq -r '.repo_file' <<< "$nccl_metadata")" "$(jq -r '.sha256' <<< "$nccl_metadata")"
 verify_bit "$(jq -r '.binary_file' <<< "$nvbandwidth_metadata")" "$(jq -r '.sha256' <<< "$nvbandwidth_metadata")"
 [[ -d "/lib/modules/$(uname -r)/build" ]] || { echo 'Running-kernel headers are missing.' >&2; exit 1; }
 bash -e -c 'source /etc/profile.d/modules.sh; module load mpi/hpcx; test -d "$HPCX_MPI_DIR"; test -d "$HPCX_SHARP_DIR"; test -d "$HPCX_UCX_DIR"'
