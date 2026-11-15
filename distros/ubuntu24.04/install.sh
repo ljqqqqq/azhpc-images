@@ -47,6 +47,7 @@ fi
 
 if [ "$GPU" = "NVIDIA" ]; then
     # Install CUDA before MPI so HPC-X can rebuild Open MPI with CUDA support.
+    $COMPONENT_DIR/configure_nvidia_repositories.sh
     if [ "$SKU" = "GB200" ]; then
         # For GB200, pass SKU to install the correct driver.
         $COMPONENT_DIR/install_nvidiagpudriver.sh

@@ -27,6 +27,7 @@ $COMPONENT_DIR/install_doca.sh
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
 
+    $COMPONENT_DIR/configure_nvidia_repositories.sh
     $COMPONENT_DIR/install_nvidiagpudriver.sh
 fi
 
