@@ -42,6 +42,8 @@ if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
         cp /var/$NCCL_REPO_DIR/nccl-local-*-keyring.gpg /usr/share/keyrings/
         apt-get update
         apt-get install -y "libnccl2=${NCCL_VERSION}" "libnccl-dev=${NCCL_VERSION}"
+    elif [[ "$SKU" == "VR200" ]]; then
+        apt-get install -y "libnccl2=${NCCL_VERSION}" "libnccl-dev=${NCCL_VERSION}"
     else
         apt-get install -y libnccl2 libnccl-dev
     fi

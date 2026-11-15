@@ -41,6 +41,7 @@ $COMPONENT_DIR/install_mpis.sh
 
 if [ "$GPU" = "NVIDIA" ]; then
     # install nvidia gpu driver
+    $COMPONENT_DIR/configure_nvidia_repositories.sh
     $COMPONENT_DIR/install_nvidiagpudriver.sh
 
     if [[ "${NVLINK_RACKSCALE,,}" == "true" ]]; then
