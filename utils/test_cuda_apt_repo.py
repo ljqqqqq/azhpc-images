@@ -20,9 +20,9 @@ class CudaAptRepoTest(unittest.TestCase):
         self.local_source.write_text("deb file:/var/nvidia-driver-local /\n")
         self.original_local_source = self.local_source.read_text()
         self.source.write_text("deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/sbsa/ /\n")
-        self.utilities = self.root / "utilities.sh"
-        utilities = Path(__file__).with_name("utilities.sh").read_text()
-        self.utilities.write_text(utilities.replace("/etc/apt/sources.list.d", self.sources.as_posix()))
+        self.repo_script = self.root / "configure_nvidia_repositories.sh"
+        utilities = (Path(__file__).resolve().parents[1] / "components/configure_nvidia_repositories.sh").read_text()
+        self.repo_script.write_text(utilities.replace("/etc/apt/sources.list.d", self.sources.as_posix()))
         self.log = self.root / "commands"
 
     def run_mode(self, mode, **overrides):
@@ -35,7 +35,8 @@ class CudaAptRepoTest(unittest.TestCase):
                        "datacenter-gpu-manager-4-cuda13",
                        "libdcgm", "dcgmi", "nv-hostengine", "libdcgm",
                        "cuda-toolkit-13-5", "nvidia-dkms-open",
-                       "nvidia-imex-direct", "libnccl2", "libnvshmem3-cuda-13",
+                       "nvidia-imex-direct", "libnccl2", "libnccl-dev",
+                       "libnccl-static", "libnccl-dev-tools", "libnvshmem3-cuda-13",
                    ]))
         env.update(overrides)
         script = r'''
@@ -44,7 +45,7 @@ source "$1"
 wget() { printf 'wget %s\n' "$*" >> "$TEST_LOG"; touch "$2"; }
 apt() {
     printf 'apt %s\n' "$*" >> "$TEST_LOG"
-    if [[ "$TEST_MODE" == dcgm && -f "$TEST_SOURCE" ]]; then
+    if [[ "$TEST_MODE" != public && -f "$TEST_SOURCE" ]]; then
         echo "Unrestricted source still enabled during keyring install" >&2
         return 99
     fi
@@ -68,7 +69,7 @@ configure_cuda_online_repo ubuntu2604 sbsa "$2"
 '''
         return subprocess.run(
             [os.environ.get("BASH", "bash"), "-c", script, "bash",
-             self.utilities.as_posix(), mode],
+             self.repo_script.as_posix(), mode],
             env=env, capture_output=True, text=True,
         )
 
@@ -106,6 +107,40 @@ configure_cuda_online_repo ubuntu2604 sbsa "$2"
         expected = self.source.read_text()
         self.assert_success(self.run_mode("dcgm"))
         self.assertEqual(self.source.read_text(), expected)
+
+    def test_dcgm_nccl_mode_adds_only_the_two_exact_nccl_packages(self):
+        self.assert_success(self.run_mode("dcgm_nccl"))
+        include = self.source.read_text().split("include=")[1].split("]")[0]
+        self.assertEqual(include.split(","), [
+            "datacenter-gpu-manager-4-core", "datacenter-gpu-manager-4-cuda13",
+            "datacenter-gpu-manager-4-module-diag", "dcgmi", "libdcgm", "nv-hostengine",
+            "libnccl2", "libnccl-dev",
+        ])
+        expected = self.source.read_text()
+        self.assert_success(self.run_mode("dcgm_nccl"))
+        self.assertEqual(self.source.read_text(), expected)
+
+    def test_missing_nccl_package_fails_closed(self):
+        for missing, present in (("libnccl2", "libnccl-dev"), ("libnccl-dev", "libnccl2")):
+            with self.subTest(missing=missing):
+                result = self.run_mode("dcgm_nccl", TEST_PACKAGES="libdcgm\n" + present)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("required NCCL package " + missing + " is missing", result.stderr)
+                self.assertFalse(self.source.exists())
+
+    def test_dcgm_nccl_mode_failure_keeps_driver_and_cuda_source_closed(self):
+        for flag, code in (("TEST_FAIL_INDEX", 42), ("TEST_FAIL_KEYRING", 43)):
+            with self.subTest(flag=flag):
+                result = self.run_mode("dcgm_nccl", **{flag: "yes"})
+                self.assertEqual(result.returncode, code)
+                self.assertFalse(self.source.exists())
+                self.assertEqual(self.local_source.read_text(), self.original_local_source)
+
+    def test_dcgm_nccl_mode_requires_apt_include_support(self):
+        result = self.run_mode("dcgm_nccl", TEST_OLD_APT="yes")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires APT 3.2", result.stderr)
+        self.assertFalse(self.log.exists())
 
     def test_no_dcgm_packages_fails_closed(self):
         result = self.run_mode("dcgm", TEST_PACKAGES="nvidia-dkms-open\ncuda-toolkit-13-5")

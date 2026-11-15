@@ -45,6 +45,8 @@ if [[ $DISTRIBUTION == "ubuntu26.04" ]]; then
         apt install -y \
             "libnccl2=${NCCL_VERSION}" \
             "libnccl-dev=${NCCL_VERSION}"
+    elif [[ "$SKU" == "VR200" ]]; then
+        apt-get install -y "libnccl2=${NCCL_VERSION}" "libnccl-dev=${NCCL_VERSION}"
     else
         apt-get install -y libnccl2 libnccl-dev
     fi

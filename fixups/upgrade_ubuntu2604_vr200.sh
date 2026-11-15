@@ -24,6 +24,7 @@ export UCF_FORCE_CONFFNEW=1 NEEDRESTART_MODE=l
 COMPONENT_VERSIONS=$(jq -c . "${TOP_DIR}/versions.json")
 export COMPONENT_VERSIONS
 source "${UTILS_DIR}/utilities.sh"
+source "${COMPONENT_DIR}/configure_nvidia_repositories.sh"
 source "${TOP_DIR}/fixups/vr200_refresh/preserve_settings.sh"
 if [[ -n "${1:-}" ]]; then tar -xzf "$1" -C "$TOP_DIR"; fi
 
@@ -40,13 +41,13 @@ verify_bit() {
 }
 jq -e '.driver.source == "private"' <<< "$nvidia_metadata" >/dev/null
 jq -e '.driver.source == "private"' <<< "$cuda_metadata" >/dev/null
-for metadata in "$doca_metadata" "$nccl_metadata" "$nvbandwidth_metadata"; do
+for metadata in "$doca_metadata" "$nvbandwidth_metadata"; do
     jq -e '.source == "private"' <<< "$metadata" >/dev/null
 done
+jq -e '.source == "public" and (.version | length > 0)' <<< "$nccl_metadata" >/dev/null
 verify_bit "$(jq -r '.driver.repo_file' <<< "$nvidia_metadata")" "$(jq -r '.driver.sha256' <<< "$nvidia_metadata")"
 verify_bit "$(jq -r '.driver.repo_file' <<< "$cuda_metadata")" "$(jq -r '.driver.sha256' <<< "$cuda_metadata")"
 verify_bit "$(jq -r '.repo_file' <<< "$doca_metadata")" "$(jq -r '.sha256' <<< "$doca_metadata")"
-verify_bit "$(jq -r '.repo_file' <<< "$nccl_metadata")" "$(jq -r '.sha256' <<< "$nccl_metadata")"
 verify_bit "$(jq -r '.binary_file' <<< "$nvbandwidth_metadata")" "$(jq -r '.sha256' <<< "$nvbandwidth_metadata")"
 [[ -d "/lib/modules/$(uname -r)/build" ]] || { echo 'Running-kernel headers are missing.' >&2; exit 1; }
 bash -e -c 'source /etc/profile.d/modules.sh; module load mpi/hpcx; test -d "$HPCX_MPI_DIR"; test -d "$HPCX_SHARP_DIR"; test -d "$HPCX_UCX_DIR"'
@@ -127,11 +128,8 @@ CUDA_REPO_DISTRIBUTION=$(jq -r '.driver.distribution' <<< "$cuda_metadata")
 configure_cuda_online_repo "$CUDA_REPO_DISTRIBUTION" sbsa disabled \
     2>&1 | tee "${VR200_REPORT_DIR}/cuda-source-policy.log"
 run_component install_doca.sh 2>&1 | tee "${VR200_REPORT_DIR}/doca.log"
-# This private CUDA repo changed contents without changing its package version.
-# A normal `apt install <local.deb>` can leave the old repository payload in place.
-apt-get install -y --reinstall "${TOP_DIR}/internal_bits/$(jq -r '.driver.repo_file' <<< "$cuda_metadata")" \
-    2>&1 | tee "${VR200_REPORT_DIR}/cuda-repo.log"
-bash "${TOP_DIR}/fixups/vr200_refresh/refresh_nvidia_repo.sh" 2>&1 | tee "${VR200_REPORT_DIR}/nvidia-repo.log"
+"${COMPONENT_DIR}/configure_nvidia_repositories.sh" --refresh \
+    2>&1 | tee "${VR200_REPORT_DIR}/nvidia-cuda-repositories.log"
 bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
     "/var/$(jq -r '.driver.repo_file' <<< "$nvidia_metadata" | cut -d_ -f1)" \
     "/var/$(jq -r '.driver.repo_file' <<< "$cuda_metadata" | cut -d_ -f1)" \
@@ -140,18 +138,11 @@ run_component install_nvidiagpudriver.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvidia.
 move_previous_paths "${nccl_paths[@]}"
 run_component install_nccl.sh 2>&1 | tee "${VR200_REPORT_DIR}/nccl.log"
 nccl_completed=true
-bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
-    "/var/$(jq -r '.repo_file' <<< "$nccl_metadata" | cut -d_ -f1)" \
-    2>&1 | tee -a "${VR200_REPORT_DIR}/private-packages.log"
 move_previous_paths "$nvbandwidth_path"
 run_component install_nvbandwidth_tool.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvbandwidth.log"
 nvbandwidth_completed=true
 
 bash "${TOP_DIR}/fixups/vr200_refresh/apply_image_fixes.sh" 2>&1 | tee "${VR200_REPORT_DIR}/image-fixes.log"
-
-# DCGM is inherited from the base image; keep only its public packages available.
-configure_cuda_online_repo "$CUDA_REPO_DISTRIBUTION" sbsa dcgm \
-    2>&1 | tee -a "${VR200_REPORT_DIR}/cuda-source-policy.log"
 
 # Restore only the temporary policy-rc.d and original package holds.
 # Component configuration remains as written by the installers.

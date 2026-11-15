@@ -16,7 +16,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[2]
 OFED = "26.01.OFED.26.01.2.0.0.0.617.1-1"
-NVIDIA_REPO = "nvidia-driver-local-repo-ubuntu2604-620.70.06"
+NVIDIA_REPO = "nvidia-driver-local-repo-ubuntu2604-620.70.08"
 
 MOCK_TOOL = r'''#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -38,7 +38,8 @@ elif name == 'dpkg-deb':
         print('\t'.join(metadata[field] for field in ('Package', 'Version', 'Architecture')))
         sys.exit()
     assert args[0] == '-f' and args[2] == 'Package'
-    print(os.environ.get('REPO_DEB_PACKAGE', 'nvidia-driver-local-repo-ubuntu2604-620.70.06'))
+    package = pathlib.Path(args[1]).name.split('_')[0]
+    print(os.environ.get('REPO_DEB_PACKAGE', package) if package.startswith('nvidia-driver-local-repo-') else package)
 elif name == 'dpkg-query':
     if args[-1].startswith('-f='):
         if 'Architecture' in args[-1]:
@@ -89,7 +90,7 @@ elif name == 'dkms':
     state = os.environ.get('DKMS_STATE', 'installed')
     suffix = os.environ.get('DKMS_SUFFIX', '' if module == 'nvidia' else ' (Original modules exist)')
     print(f'{module}/{version}, {kernel}, aarch64: {state}{suffix}')
-elif name == 'modinfo': print('620.70.06')
+elif name == 'modinfo': print('620.70.08')
 elif name in ('apt-get', 'apt'):
     assert (args in (['check'], ['update'], ['-y', 'install', 'doca-ofed'])
             or args[:3] == ['install', '-y', '--reinstall']
@@ -108,13 +109,13 @@ elif name in ('apt-get', 'apt'):
         removed = json.loads((root / 'removed-packages.json').read_text())
         for package in args[3:]:
             assert package.startswith('nvidia-driver-local-repo-')
-            assert package != 'nvidia-driver-local-repo-ubuntu2604-620.70.06'
+            assert package != 'nvidia-driver-local-repo-ubuntu2604-620.70.08'
             repositories[package] = 'not-installed'
             removed.append(package)
         (root / 'repo-packages.json').write_text(json.dumps(repositories))
         (root / 'removed-packages.json').write_text(json.dumps(removed))
     elif args[:3] == ['install', '-y', '--reinstall'] and pathlib.Path(args[-1]).name.startswith('nvidia-driver-local-repo-'):
-        package = 'nvidia-driver-local-repo-ubuntu2604-620.70.06'
+        package = 'nvidia-driver-local-repo-ubuntu2604-620.70.08'
         directory = root / 'var' / package
         directory.mkdir(parents=True, exist_ok=True)
         (directory / 'nvidia-driver-local-new-keyring.gpg').write_text('new keyring\n')
@@ -180,8 +181,8 @@ fi
 if [[ "$name" == install_nvbandwidth_tool.sh ]]; then
     [[ ! -e "$MOCK_ROOT/opt/nvidia/nvbandwidth" && ! -L "$MOCK_ROOT/opt/nvidia/nvbandwidth" ]]
     mkdir -p "$MOCK_ROOT/opt/nvidia/nvbandwidth"
-    cp "$TOP_DIR/internal_bits/nvbandwidth_main_0.10_v6" "$MOCK_ROOT/opt/nvidia/nvbandwidth/"
-    ln -sfn "$MOCK_ROOT/opt/nvidia/nvbandwidth/nvbandwidth_main_0.10_v6" "$MOCK_ROOT/opt/nvidia/nvbandwidth/nvbandwidth"
+    cp "$TOP_DIR/internal_bits/nvbandwidth_main_0.9" "$MOCK_ROOT/opt/nvidia/nvbandwidth/"
+    ln -sfn "$MOCK_ROOT/opt/nvidia/nvbandwidth/nvbandwidth_main_0.9" "$MOCK_ROOT/opt/nvidia/nvbandwidth/nvbandwidth"
 fi
 [[ "${FAIL_COMPONENT:-}" != "$name" ]] || exit 42
 '''
@@ -213,7 +214,7 @@ class UpgradeTest(unittest.TestCase):
         self.env["PATH"] = str(self.root / "bin") + os.pathsep + os.environ["PATH"]
         for file in ("fixups/upgrade_ubuntu2604_vr200.sh", "fixups/vr200_refresh/preserve_settings.sh",
                      "fixups/vr200_refresh/verify_versions.sh", "fixups/vr200_refresh/remove_nolpi.sh",
-                     "fixups/vr200_refresh/refresh_nvidia_repo.sh",
+                     "components/configure_nvidia_repositories.sh",
                      "fixups/vr200_refresh/reinstall_private_packages.sh",
                      "utils/utilities.sh"):
             source = (REPO / file).read_text()
@@ -221,15 +222,21 @@ class UpgradeTest(unittest.TestCase):
                             lambda match: str(self.root) + match[0], source)
             # Only the fixture copy omits the root guard, so tests run unprivileged.
             source = source.replace("[[ ${EUID} -eq 0 ]]", "true")
-            if file == "utils/utilities.sh":
+            if file in ("utils/utilities.sh", "components/configure_nvidia_repositories.sh"):
                 # Repository filtering has its own tests; never use real APT/network here.
-                source += '\nconfigure_cuda_online_repo() { echo "cuda-source $*" >> "$MOCK_ROOT/calls.log"; }\n'
-            self.put("repo/" + file, source)
+                mock = '\nconfigure_cuda_online_repo() { echo "cuda-source $*" >> "$MOCK_ROOT/calls.log"; }\n'
+                if file == "components/configure_nvidia_repositories.sh":
+                    source = source.replace('\nif [[ "${BASH_SOURCE[0]}" == "$0" ]]; then',
+                                            mock + '\nif [[ "${BASH_SOURCE[0]}" == "$0" ]]; then')
+                else:
+                    source += mock
+            self.put("repo/" + file, source,
+                     0o755 if file == "components/configure_nvidia_repositories.sh" else 0o644)
         versions = json.loads((REPO / "versions.json").read_text())
         config = lambda name: versions[name]["ubuntu26.04"]["aarch64"]["azure_vm_regular"]["nvidia_vr200"]
         payload = b"mock verified payload\n"
         checksum = hashlib.sha256(payload).hexdigest()
-        for component in ("nvidia", "cuda", "doca", "nccl", "nvbandwidth"):
+        for component in ("nvidia", "cuda", "doca", "nvbandwidth"):
             data = config(component)
             if component in ("nvidia", "cuda"): data = data["driver"]
             for key in ("sha256",):
@@ -246,12 +253,12 @@ class UpgradeTest(unittest.TestCase):
                          "libnccl-dev": config("nccl")["version"]})
         packages.update({name + "-dkms": OFED for name in ("mlnx-ofed-kernel", "iser", "isert", "srp")})
         self.put("packages.json", json.dumps(packages))
-        for component, package in (("nvidia", "nvidia-dkms-open"), ("cuda", "cuda-toolkit-13-5"),
-                                   ("nccl", "libnccl2")):
+        for component, package in (("nvidia", "nvidia-dkms-open"), ("cuda", "cuda-toolkit-13-5")):
             data = config(component)
             if component in ("nvidia", "cuda"):
                 data = data["driver"]
             directory = "var/" + data["repo_file"].split("_")[0]
+            self.put(directory + ("/nvidia-driver-local-test-keyring.gpg" if component == "nvidia" else "/cuda-test-keyring.gpg"), "test keyring")
             self.put(directory + "/" + package + ".deb",
                      json.dumps({"Package": package, "Version": packages[package], "Architecture": "arm64"}))
         self.put("etc/os-release", "ID=ubuntu\nVERSION_ID=26.04\n")
@@ -275,7 +282,7 @@ class UpgradeTest(unittest.TestCase):
         self.put("usr/local/nccl-rdma-sharp-plugins/lib/libnccl-net.so", "old\n")
         self.put("usr/local/nccl-rdma-sharp-plugins/lib/libobsolete.so", "old\n")
         self.put("opt/nvidia/nvbandwidth/old-binary", "old\n")
-        self.put("opt/nvidia/nvbandwidth/nvbandwidth_main_0.10_v6", "old\n")
+        self.put("opt/nvidia/nvbandwidth/nvbandwidth_main_0.9", "old\n")
         (self.root / "opt/nvidia/nvbandwidth/nvbandwidth").symlink_to("old-binary")
         for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool"):
             self.put(f"repo/components/install_{name}.sh", INSTALLER)
@@ -317,7 +324,7 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual((plugin / "libnccl-net.so").read_text(), "new\n")
         bandwidth = self.root / "opt/nvidia/nvbandwidth"
         self.assertEqual(sorted(path.name for path in bandwidth.iterdir()),
-                         ["nvbandwidth", "nvbandwidth_main_0.10_v6"])
+                         ["nvbandwidth", "nvbandwidth_main_0.9"])
         self.assertEqual((bandwidth / "nvbandwidth").read_bytes(), b"mock verified payload\n")
         self.assertEqual((self.root / "install-order").read_text().splitlines(),
                          [f"install_{name}.sh" for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool")])
@@ -368,7 +375,7 @@ class UpgradeTest(unittest.TestCase):
                     self.assertEqual((plugin / "libobsolete.so").exists(), name != "nvbandwidth_tool")
                     bandwidth = case.root / "opt/nvidia/nvbandwidth"
                     self.assertEqual(os.readlink(bandwidth / "nvbandwidth"), "old-binary")
-                    self.assertEqual((bandwidth / "nvbandwidth_main_0.10_v6").read_text(), "old\n")
+                    self.assertEqual((bandwidth / "nvbandwidth_main_0.9").read_text(), "old\n")
                 finally:
                     case.doCleanups()
 
@@ -557,13 +564,14 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = (self.root / "calls.log").read_text()
         installs = [line for line in calls.splitlines() if '--no-remove' in line]
-        self.assertEqual(len(installs), 2)
+        self.assertEqual(len(installs), 1)
         self.assertIn("apt-get install -y --reinstall --no-remove -- ", installs[0])
         self.assertIn("/nvidia-dkms-open.deb", installs[0])
         self.assertIn("/cuda-toolkit-13-5.deb", installs[0])
-        self.assertIn("/libnccl2.deb", installs[1])
+        self.assertNotIn("nccl-local-repo-", calls)
         self.assertLess(calls.index("cuda-source ubuntu2604 sbsa disabled"), calls.index(installs[0]))
-        self.assertLess(calls.index(installs[1]), calls.index("cuda-source ubuntu2604 sbsa dcgm"))
+        self.assertLess(calls.index("cuda-source ubuntu2604 sbsa dcgm_nccl"), calls.index(installs[0]))
+        self.assertEqual(calls.count("cuda-source ubuntu2604 sbsa dcgm_nccl"), 1)
         self.assert_restored()
 
     def run_private_reinstall(self, **overrides):
@@ -577,7 +585,7 @@ class UpgradeTest(unittest.TestCase):
     def test_private_reinstall_skips_uninstalled_other_versions_and_architectures(self):
         for package, version, arch in (("not-installed", "1", "arm64"),
                                        ("nvidia-modprobe", "old-version", "arm64"),
-                                       ("libnvidia-cfg1", "620.70.06-1ubuntu1", "amd64")):
+                                       ("libnvidia-cfg1", "620.70.08-1ubuntu1", "amd64")):
             self.put(f"var/{NVIDIA_REPO}/{package}.deb",
                      json.dumps({"Package": package, "Version": version, "Architecture": arch}))
         result = self.run_private_reinstall()
@@ -614,21 +622,37 @@ class UpgradeTest(unittest.TestCase):
         self.assertNotIn("apt-get purge", (self.root / "calls.log").read_text())
 
     def test_corrupt_input_stops_before_installer(self):
-        self.put("repo/internal_bits/nvbandwidth_main_0.10_v6", "corrupt")
+        self.put("repo/internal_bits/nvbandwidth_main_0.9", "corrupt")
         result = self.run_upgrade()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Checksum verification failed", result.stdout)
         self.assertFalse((self.root / "install-order").exists())
 
-    def test_missing_nccl_repository_stops_before_installer(self):
-        repository = next((self.repo / "internal_bits").glob("nccl-local-repo-*.deb"))
-        repository.unlink()
+    def test_missing_driver_repository_stops_before_installer(self):
+        archive = next((self.repo / "internal_bits").glob("nvidia-driver-local-repo-*.deb"))
+        archive.unlink()
         result = self.run_upgrade()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Missing private input/checksum: nccl-local-repo-", result.stderr)
+        self.assertIn("Missing private input/checksum: nvidia-driver-local-repo-", result.stderr)
         self.assertFalse((self.root / "install-order").exists())
 
+    def test_public_nccl_upgrade_does_not_require_standalone_imex(self):
+        self.assertFalse(list((self.repo / "internal_bits").glob("nvidia-imex-direct_*.deb")))
+        result = self.run_upgrade()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = (self.root / "calls.log").read_text()
+        self.assertIn("cuda-source ubuntu2604 sbsa dcgm_nccl", calls)
+        self.assertNotIn("nccl-local-repo-", calls)
+        self.assert_restored()
+
     def test_private_nccl_repository_installs_exact_versions(self):
+        versions = json.loads((self.repo / "versions.json").read_text())
+        nccl = versions["nccl"]["ubuntu26.04"]["aarch64"]["azure_vm_regular"]["nvidia_vr200"]
+        nccl.update(source="private", version="2.32.5-1+cuda13.5",
+                    repo_file="nccl-local-repo-ubuntu2604-2.32.5-cuda13.5_1.0-1_arm64.deb",
+                    sha256=hashlib.sha256(b"mock verified payload\n").hexdigest())
+        self.put("repo/internal_bits/" + nccl["repo_file"], b"mock verified payload\n")
+        self.put("repo/versions.json", json.dumps(versions))
         source = (REPO / "components/install_nccl.sh").read_text()
         source = source.split("# Install the nccl rdma sharp plugin.")[0] + "\npopd\n"
         source = re.sub(r"/(?:tmp|var|usr/share/keyrings)(?=[/\"'\s]|$)",

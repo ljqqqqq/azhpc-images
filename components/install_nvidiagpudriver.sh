@@ -7,39 +7,6 @@ source ${UTILS_DIR}/utilities.sh
 nvidia_metadata=$(get_component_config "nvidia")
 cuda_metadata=$(get_component_config "cuda")
 
-# Some configurations, such as MRC images and certain CRDs, require local
-# NVIDIA repositories staged in internal_bits. Driver and CUDA repositories
-# are selected independently from component metadata.
-function install_from_nvidia_local_repo {
-    local repo_file=$1
-    local repo_sha256=$2
-    local repo_dir=${repo_file%%_*}
-    local repo_path="$TOP_DIR/internal_bits/$repo_file"
-
-    verify_checksum "$repo_path" "$repo_sha256"
-    apt install -y "$repo_path"
-    cp /var/$repo_dir/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
-
-    cat <<EOF > /etc/apt/preferences.d/00-nvidia-prefer
-Package: *
-Pin: origin ""
-Pin-Priority: 1001
-EOF
-    apt update
-}
-
-function install_from_cuda_local_repo {
-    local repo_file=$1
-    local repo_sha256=$2
-    local repo_dir=${repo_file%%_*}
-    local repo_path="$TOP_DIR/internal_bits/$repo_file"
-
-    verify_checksum "$repo_path" "$repo_sha256"
-    apt install -y "$repo_path"
-    cp /var/$repo_dir/cuda-*-keyring.gpg /usr/share/keyrings/
-    apt update
-}
-
 if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
     if [ "$SKU" = "V100" ]; then
         # V100 requires proprietary kernel modules
@@ -69,29 +36,6 @@ if [[ $DISTRIBUTION == "azurelinux3.0" ]]; then
 elif [[ $DISTRIBUTION == *"ubuntu"* ]]; then
     # APT-based NVIDIA driver installation for Ubuntu
     NVIDIA_DRIVER_VERSION=$(jq -r '.driver.version' <<< $nvidia_metadata)
-    CUDA_DRIVER_DISTRIBUTION=$(jq -r '.driver.distribution' <<< $cuda_metadata)
-    CUDA_SOURCE=$(jq -r '.driver.source // "public"' <<< $cuda_metadata)
-
-    if [ "$ARCHITECTURE" = "aarch64" ]; then
-        CUDA_ARCHITECTURE="sbsa"
-    else
-        CUDA_ARCHITECTURE="x86_64"
-    fi
-    if [ "$CUDA_SOURCE" = "private" ]; then
-        configure_cuda_online_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" disabled
-        NVIDIA_CUDA_REPO_FILE=$(jq -r '.driver.repo_file' <<< $cuda_metadata)
-        NVIDIA_CUDA_REPO_SHA256=$(jq -r '.driver.sha256' <<< $cuda_metadata)
-        install_from_cuda_local_repo "$NVIDIA_CUDA_REPO_FILE" "$NVIDIA_CUDA_REPO_SHA256"
-    else
-        configure_cuda_online_repo "$CUDA_DRIVER_DISTRIBUTION" "$CUDA_ARCHITECTURE" public
-    fi
-
-    NVIDIA_DRIVER_SOURCE=$(jq -r '.driver.source' <<< $nvidia_metadata)
-    if _is_mrc_network || [ "$NVIDIA_DRIVER_SOURCE" = "private" ]; then
-        NVIDIA_GPU_DRIVER_REPO_FILE=$(jq -r '.driver.repo_file' <<< $nvidia_metadata)
-        NVIDIA_GPU_DRIVER_REPO_SHA256=$(jq -r '.driver.sha256' <<< $nvidia_metadata)
-        install_from_nvidia_local_repo "$NVIDIA_GPU_DRIVER_REPO_FILE" "$NVIDIA_GPU_DRIVER_REPO_SHA256"
-    fi
     if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
         apt-get install -y \
             "nvidia-dkms-open=${NVIDIA_DRIVER_VERSION}" \
@@ -179,7 +123,6 @@ if [[ "$TARGET_NODE_TYPE" != "azure_vm_akshost" ]]; then
     CUDA_SAMPLES_SHA256=$(jq -r '.samples.sha256' <<< $cuda_metadata)
 
     if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
-        # NVIDIA APT repo already configured during driver installation
         CUDA_TOOLKIT_PACKAGE_VERSION=$(jq -r '.driver.package_version // empty' <<< $cuda_metadata)
         if [[ "$DISTRIBUTION" == "ubuntu26.04" && "$SKU" == "VR200" ]]; then
             apt install -y "cuda-toolkit-${CUDA_DRIVER_VERSION//./-}=${CUDA_TOOLKIT_PACKAGE_VERSION}"
