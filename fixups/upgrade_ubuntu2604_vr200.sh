@@ -24,7 +24,6 @@ export UCF_FORCE_CONFFNEW=1 NEEDRESTART_MODE=l
 COMPONENT_VERSIONS=$(jq -c . "${TOP_DIR}/versions.json")
 export COMPONENT_VERSIONS
 source "${UTILS_DIR}/utilities.sh"
-source "${COMPONENT_DIR}/configure_nvidia_repositories.sh"
 source "${TOP_DIR}/fixups/vr200_refresh/preserve_settings.sh"
 if [[ -n "${1:-}" ]]; then tar -xzf "$1" -C "$TOP_DIR"; fi
 
@@ -124,16 +123,9 @@ move_previous_paths() {
         fi
     done
 }
-CUDA_REPO_DISTRIBUTION=$(jq -r '.driver.distribution' <<< "$cuda_metadata")
-configure_cuda_online_repo "$CUDA_REPO_DISTRIBUTION" sbsa disabled \
-    2>&1 | tee "${VR200_REPORT_DIR}/cuda-source-policy.log"
 run_component install_doca.sh 2>&1 | tee "${VR200_REPORT_DIR}/doca.log"
 "${COMPONENT_DIR}/configure_nvidia_repositories.sh" --refresh \
     2>&1 | tee "${VR200_REPORT_DIR}/nvidia-cuda-repositories.log"
-bash "${TOP_DIR}/fixups/vr200_refresh/reinstall_private_packages.sh" \
-    "/var/$(jq -r '.driver.repo_file' <<< "$nvidia_metadata" | cut -d_ -f1)" \
-    "/var/$(jq -r '.driver.repo_file' <<< "$cuda_metadata" | cut -d_ -f1)" \
-    2>&1 | tee "${VR200_REPORT_DIR}/private-packages.log"
 run_component install_nvidiagpudriver.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvidia.log"
 move_previous_paths "${nccl_paths[@]}"
 run_component install_nccl.sh 2>&1 | tee "${VR200_REPORT_DIR}/nccl.log"

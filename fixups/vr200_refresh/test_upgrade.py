@@ -130,7 +130,6 @@ elif name in ('apt-get', 'apt'):
     if os.environ.get('REMOVE_OLD_PACKAGE') and 'install' in args:
         (root / 'removed-packages.json').write_text(json.dumps([os.environ['REMOVE_OLD_PACKAGE']]))
     if os.environ.get('FAIL_APT') and 'install' in args: sys.exit(42)
-    if '--no-remove' in args and os.environ.get('FAIL_PRIVATE_REINSTALL'): sys.exit(42)
 elif name == 'ofed_info': print('MLNX_OFED_LINUX-26.01-2.0.0.0.617:')
 elif name == 'sudo':
     assert args[:2] == ['tee', '-a'] and str(root) in args[-1]
@@ -559,17 +558,19 @@ class UpgradeTest(unittest.TestCase):
         self.assert_restored()
         self.assertEqual((self.root / "install-order").read_text().splitlines(), ["install_doca.sh"])
 
-    def test_same_version_private_packages_are_reinstalled_from_archives(self):
+    def test_upgrade_refreshes_repositories_without_reinstalling_same_version_components(self):
+        self.put("repo/fixups/vr200_refresh/reinstall_private_packages.sh",
+                 "#!/bin/bash\necho 'unexpected private component reinstall' >&2\nexit 42\n")
         result = self.run_upgrade()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = (self.root / "calls.log").read_text()
-        installs = [line for line in calls.splitlines() if '--no-remove' in line]
-        self.assertEqual(len(installs), 1)
-        self.assertIn("apt-get install -y --reinstall --no-remove -- ", installs[0])
-        self.assertIn("/nvidia-dkms-open.deb", installs[0])
-        self.assertIn("/cuda-toolkit-13-5.deb", installs[0])
+        installs = [line for line in calls.splitlines() if line.startswith("apt-get install -y --reinstall ")]
+        self.assertEqual(len(installs), 2)
+        self.assertIn("/internal_bits/cuda-repo-", installs[0])
+        self.assertIn("/internal_bits/nvidia-driver-local-repo-", installs[1])
+        self.assertNotIn("--no-remove", calls)
+        self.assertNotIn("cuda-source ubuntu2604 sbsa disabled", calls)
         self.assertNotIn("nccl-local-repo-", calls)
-        self.assertLess(calls.index("cuda-source ubuntu2604 sbsa disabled"), calls.index(installs[0]))
         self.assertLess(calls.index("cuda-source ubuntu2604 sbsa dcgm_nccl"), calls.index(installs[0]))
         self.assertEqual(calls.count("cuda-source ubuntu2604 sbsa dcgm_nccl"), 1)
         self.assert_restored()
@@ -608,12 +609,6 @@ class UpgradeTest(unittest.TestCase):
         result = self.run_private_reinstall()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("no package archives", result.stderr)
-
-    def test_private_reinstall_failure_stops_before_driver_and_restores_settings(self):
-        result = self.run_upgrade(FAIL_PRIVATE_REINSTALL="1")
-        self.assertNotEqual(result.returncode, 0)
-        self.assert_restored()
-        self.assertEqual((self.root / "install-order").read_text().splitlines(), ["install_doca.sh"])
 
     def test_unexpected_repo_package_is_rejected_before_removal(self):
         result = self.run_upgrade(REPO_DEB_PACKAGE="nvidia-dkms-open")

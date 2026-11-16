@@ -4,6 +4,9 @@
 VR200 HPC image (`TARGET_NODE_TYPE=azure_vm_regular`) using
 `u26_vr200_internal_1_0_0_RC.tar.gz` and the matching entries in `versions.json`.
 It requires the running kernel's headers and an existing `mpi/hpcx` module.
+The base image's installed NVIDIA/CUDA packages must already have the intended
+private payloads. This wrapper leaves same-version component packages installed;
+refreshing their repository packages does not replace those installed payloads.
 
 | Component | Target and source |
 | --- | --- |
@@ -66,10 +69,9 @@ driver repository. The standalone IMEX DEB is not required by this upgrade. IMEX
    installer. It configures the filtered public source, reinstalls both local
    repository packages even when their Debian versions are unchanged, installs
    their keyrings, and removes obsolete NVIDIA repository registrations.
-   Save output as `upgrade/nvidia-cuda-repositories.log`. The wrapper disables
-   the inherited public CUDA source before DOCA to avoid competing packages.
-5. Reinstall installed same-version private packages from the supplied local
-   archives, then call `components/install_nvidiagpudriver.sh` to upgrade the
+   Save output as `upgrade/nvidia-cuda-repositories.log`. The repository helper
+   replaces the previous CUDA online source with the filtered source itself.
+5. Call `components/install_nvidiagpudriver.sh` to upgrade the
    driver, CUDA and IMEX. This also rebuilds CUDA samples and GDRCopy using
    existing metadata.
 6. Call `components/install_nccl.sh` to install `libnccl2` and `libnccl-dev`
