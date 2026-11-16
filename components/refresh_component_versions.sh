@@ -199,12 +199,16 @@ if [[ "${GPU_PLATFORM}" == "NVIDIA" ]]; then
     echo "[NVIDIA GPU Stack]"
 
     # NVIDIA driver
-    # Avoid nvidia-smi: requires GPU hardware. Read the version from kernel
-    # module metadata (modinfo works on the .ko without loading it or
-    # needing a GPU); fall back to /sys (needs module loaded) then to
-    # package-manager queries.
+    # The unversioned Ubuntu driver package retains private patch versions
+    # (e.g. 620.70.08) that module metadata may report only as 620.70.
+    # Prefer the installed package, then use the hardware-independent module
+    # metadata and the existing fallbacks. Avoid nvidia-smi: it requires a GPU.
     NVIDIA_VERSION=""
-    if command -v modinfo &>/dev/null; then
+    if command -v dpkg-query &>/dev/null; then
+        NVIDIA_VERSION=$(dpkg-query -W -f='${db:Status-Status}\t${Version}\n' nvidia-dkms-open 2>/dev/null \
+            | awk '$1 == "installed" { sub(/^[0-9]+:/, "", $2); sub(/-.*/, "", $2); print $2; exit }' || true)
+    fi
+    if [[ -z "${NVIDIA_VERSION}" ]] && command -v modinfo &>/dev/null; then
         NVIDIA_VERSION=$(modinfo nvidia 2>/dev/null | awk '/^version:/{print $2; exit}' || true)
         # If depmod's index can't resolve 'nvidia', point modinfo at the .ko.
         if [[ -z "${NVIDIA_VERSION}" ]]; then
