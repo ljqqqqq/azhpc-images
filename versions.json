@@ -903,8 +903,8 @@
                 }
             },
             "aarch64": {
-                "version": "2.30.4-1",
-                "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
+                "version": "2.32.6-1",
+                "sha256": "237a642c6b29bdff660292b951087a58c1781d585ceb632d54efc1be6fc2000f",
                 "rdmasharpplugins": {
                     "branch": "v2.7.x",
                     "commit": "b246b19c264fc1a673db098cc2535a0d1a0a10fd"
@@ -914,15 +914,15 @@
         "ubuntu24.04": {
             "aarch64": {
                 "baremetal_3p": {
-                    "version": "2.30.4-1",
-                    "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
+                    "version": "2.32.6-1",
+                    "sha256": "237a642c6b29bdff660292b951087a58c1781d585ceb632d54efc1be6fc2000f",
                     "rdmasharpplugins": {
                         "branch": "v2.7.x",
                         "commit": "b246b19c264fc1a673db098cc2535a0d1a0a10fd"
                     }
                 },
-                "version": "2.30.4-1",
-                "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
+                "version": "2.32.6-1",
+                "sha256": "237a642c6b29bdff660292b951087a58c1781d585ceb632d54efc1be6fc2000f",
                 "rdmasharpplugins": {
                     "branch": "master",
                     "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
