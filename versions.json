@@ -37,9 +37,9 @@
                     "sha256": "be2a37501432a74ea9fd7a6cb4aa1326e1a4d5b0761b4bd44e1edcb699995d8c",
                     "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.5.0/host/doca-host_3.5.0-082000-26.07-ubuntu2404_arm64.deb"
                 },
-                "version": "3.3.0",
-                "sha256": "ef4a16860fe1bf765f50605b331b5f4db35144b6d9dc914535261e1f68882636",
-                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.3.0/host/doca-host_3.3.0-088000-26.01-ubuntu2404_arm64.deb"
+                "version": "3.5.0",
+                "sha256": "be2a37501432a74ea9fd7a6cb4aa1326e1a4d5b0761b4bd44e1edcb699995d8c",
+                "url": "https://www.mellanox.com/downloads/DOCA/DOCA_v3.5.0/host/doca-host_3.5.0-082000-26.07-ubuntu2404_arm64.deb"
             }
         },
         "ubuntu26.04": {
@@ -114,9 +114,9 @@
                     "sha256": "cfc6816a4ac7932cf65e3f17a47106845728652cfd4d5ad71b0cb9b3ce2a9e48",
                     "url": "https://content.mellanox.com/hpc/hpc-x/v2.25.1_cuda13/hpcx-v2.25.1-gcc-doca_ofed-ubuntu24.04-cuda13-aarch64.tbz"
                 },
-                "version": "2.25.1",
-                "sha256": "cfc6816a4ac7932cf65e3f17a47106845728652cfd4d5ad71b0cb9b3ce2a9e48",
-                "url": "https://content.mellanox.com/hpc/hpc-x/v2.25.1_cuda13/hpcx-v2.25.1-gcc-doca_ofed-ubuntu24.04-cuda13-aarch64.tbz"
+                "version": "2.25.3",
+                "sha256": "1360b96981706203087282e9e86d71474ff5161ac590619714c67af355f0c432",
+                "url": "https://content.mellanox.com/hpc/hpc-x/v2.25.3_cuda13/hpcx-v2.25.3-gcc-doca_ofed-ubuntu24.04-cuda13-aarch64.tbz"
             },
             "x86_64": {
                 "azure_vm_regular": {
@@ -809,8 +809,8 @@
                     "commit": "0f7366e73b019e7facf907381f6b0b2f5a1576e4",
                     "distribution": "Ubuntu24_04"
                 },
-                "version": "2.6-1",
-                "commit": "93c606bbcaa10457cbbab93163aa446d902b983d",
+                "version": "2.7-1",
+                "commit": "7344efbd4e0a2ba9da2183b4cc0f10a092b3ca67",
                 "distribution": "Ubuntu24_04"
             },
             "x86_64": {
@@ -919,8 +919,8 @@
                         "commit": "b246b19c264fc1a673db098cc2535a0d1a0a10fd"
                     }
                 },
-                "version": "2.30.4-1",
-                "sha256": "fe12cb244a4aea4c802d0a18d1072e10f102fc39c2530a8251c2abdaeea9ecba",
+                "version": "2.32.6-1",
+                "sha256": "237a642c6b29bdff660292b951087a58c1781d585ceb632d54efc1be6fc2000f",
                 "rdmasharpplugins": {
                     "branch": "master",
                     "commit": "7daa9c64a2c496804c1d7a9284ca55b699716036"
@@ -969,7 +969,7 @@
                 "baremetal_3p": {
                     "version": "1:4.7.0-1"
                 },
-                "version": "1:4.6.1-1"
+                "version": "1:4.8.0-1"
             }
         },
         "azurelinux3.0": {
@@ -1104,12 +1104,6 @@
         }
     },
     "rdma_core": {
-        "ubuntu24.04": {
-            "aarch64": {
-                "version": "56.1",
-                "sha256": "0ebac5735bc38cafeba28a3124566b56606f11a8462c794411858efa7b407be0"
-            }
-        },
         "common": {
             "version": "59.0",
             "sha256": "4dca3dd4eed6e5e1fd21ec32244a753b95109c8a845ebda0e58dac53528808aa"
