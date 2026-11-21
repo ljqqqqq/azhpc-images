@@ -31,7 +31,8 @@ else
         standard_hb176*v4)                topoFamily="hbv4" ;;
         standard_nc80adis_h100_v5)        topoFamily="ncv5" ;;
         standard_nd96is*_h[1-2]00_v5)    topoFamily="ndv5" ;;
-        standard_nd128is*_gb[2-3]00_v6|standard_nd168isr_vr_nvl72_v7) topoFamily="nvlink_rackscale_family" ;;
+        standard_nd128is*_gb[2-3]00_v6) topoFamily="nvlink_rackscale_family" ;;
+        standard_nd168isr_vr_nvl72_v7|standard_nd172isr_vr_nvl72_v7) topoFamily="ndv7" ;;
         standard_nc*_rtxpro6000bse_v6)    topoFamily="ncv6" ;;
         *) topoFamily="" ;;
     esac
@@ -46,6 +47,7 @@ case \$topoFamily in
     ncv5)      /opt/azurehpc/customizations/ncv5.sh;;
     ndv5)      /opt/azurehpc/customizations/ndv5.sh;;
     gb-family|nvlink_rackscale_family) /opt/azurehpc/customizations/ndv6.sh;;
+    ndv7)      /opt/azurehpc/customizations/ndv7.sh;;
     ncv6)      /opt/azurehpc/customizations/ncv6.sh;;
     *)         echo "No SKU customization for topoFamily='\$topoFamily'";;
 esac
@@ -75,6 +77,7 @@ rm -rf /opt/microsoft/ndv2
 rm -rf /opt/microsoft/ndv4
 rm -rf /opt/microsoft/ndv5
 rm -rf /opt/microsoft/ncv6
+rm -rf /opt/microsoft/ndv7
 
 # Clear contents of nccl.conf
 cat /dev/null > /etc/nccl.conf
