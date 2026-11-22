@@ -83,13 +83,16 @@ driver repository. The standalone IMEX DEB is not required by this upgrade. IMEX
 7. Call `components/install_nvbandwidth_tool.sh` to install the private binary
    and switch its active symlink in a fresh `/opt/nvidia/nvbandwidth` directory.
    Old installation backups are deleted when the upgrade succeeds.
-8. Restore `policy-rc.d` and holds, then refresh the linker cache and initramfs.
-9. Run `vr200_refresh/remove_nolpi.sh` to remove `irqchip.gicv3_nolpi` from
+8. Call `components/setup_sku_customizations.sh` to refresh the installed SKU
+   dispatcher and customization scripts, including the NDv7 NCCL topology setup.
+   Save output as `upgrade/sku-customizations.log`.
+9. Restore `policy-rc.d` and holds, then refresh the linker cache and initramfs.
+10. Run `vr200_refresh/remove_nolpi.sh` to remove `irqchip.gicv3_nolpi` from
    `/etc/default/grub` and `/etc/default/grub.d/*.cfg`, preserving other boot
    arguments. Run `update-grub` and reject generated kernel entries that still
    contain the parameter. Save output as `upgrade/remove-nolpi.log` in the build
    evidence. The change takes effect on the subsequent reboot.
-10. Run `vr200_refresh/verify_versions.sh`. Check exact package versions, NVIDIA
+11. Run `vr200_refresh/verify_versions.sh`. Check exact package versions, NVIDIA
     and OFED DKMS versions for the running kernel, on-disk NVIDIA module version,
     nvbandwidth checksum, and APT/dpkg package health. Save the final inventory.
     DOCA installation does not specify a version, but verification requires the

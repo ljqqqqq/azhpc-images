@@ -133,6 +133,7 @@ nccl_completed=true
 move_previous_paths "$nvbandwidth_path"
 run_component install_nvbandwidth_tool.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvbandwidth.log"
 nvbandwidth_completed=true
+run_component setup_sku_customizations.sh 2>&1 | tee "${VR200_REPORT_DIR}/sku-customizations.log"
 
 bash "${TOP_DIR}/fixups/vr200_refresh/apply_image_fixes.sh" 2>&1 | tee "${VR200_REPORT_DIR}/image-fixes.log"
 
