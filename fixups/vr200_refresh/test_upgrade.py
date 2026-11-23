@@ -285,7 +285,6 @@ class UpgradeTest(unittest.TestCase):
         (self.root / "opt/nvidia/nvbandwidth/nvbandwidth").symlink_to("old-binary")
         for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool"):
             self.put(f"repo/components/install_{name}.sh", INSTALLER)
-        self.put("repo/components/setup_sku_customizations.sh", INSTALLER)
         # The isolated image-fix behavior is exercised in test_image_fixes.py.
         self.put("repo/fixups/vr200_refresh/apply_image_fixes.sh",
                  '#!/bin/bash\nset -euo pipefail\n'
@@ -327,9 +326,7 @@ class UpgradeTest(unittest.TestCase):
                          ["nvbandwidth", "nvbandwidth_main_0.9"])
         self.assertEqual((bandwidth / "nvbandwidth").read_bytes(), b"mock verified payload\n")
         self.assertEqual((self.root / "install-order").read_text().splitlines(),
-                         [f"install_{name}.sh" for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool")]
-                         + ["setup_sku_customizations.sh"])
-        self.assertTrue((self.root / "var/tmp/azhpc-image-evidence/mock-run/upgrade/sku-customizations.log").is_file())
+                         [f"install_{name}.sh" for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool")])
         self.assertIn("--reinstall", (self.root / "calls.log").read_text())
         repositories = json.loads((self.root / "repo-packages.json").read_text())
         self.assertEqual([name for name, state in repositories.items()
@@ -356,33 +353,28 @@ class UpgradeTest(unittest.TestCase):
         self.assertNotIn("systemctl unmask", calls)
 
     def test_each_installer_failure_restores_temporary_state(self):
-        for script in ("install_doca.sh", "install_nvidiagpudriver.sh", "install_nccl.sh",
-                       "install_nvbandwidth_tool.sh", "setup_sku_customizations.sh"):
-            with self.subTest(component=script):
+        for name in ("doca", "nvidiagpudriver", "nccl", "nvbandwidth_tool"):
+            with self.subTest(component=name):
                 # Each run gets a fresh base image fixture.
                 case = UpgradeTest()
                 case.setUp()
                 try:
-                    result = case.run_upgrade(FAIL_COMPONENT=script)
+                    result = case.run_upgrade(FAIL_COMPONENT=f"install_{name}.sh")
                     self.assertNotEqual(result.returncode, 0)
                     self.assertIn("backups retained", result.stderr)
                     case.assert_restored()
                     # Completed installer writes are not reverted after failure.
                     self.assertEqual((case.root / "etc/profile.d/cuda.sh").read_text(), "changed")
                     self.assertEqual((case.root / "etc/modprobe.d/nvidia-openrm.conf").read_text(), "introduced")
-                    nccl_completed = script in ("install_nvbandwidth_tool.sh", "setup_sku_customizations.sh")
-                    if not nccl_completed:
+                    if name != "nvbandwidth_tool":
                         self.assertEqual((case.root / "opt/nccl-tests/version").read_text(), "old\n")
                     plugin = case.root / "usr/local/nccl-rdma-sharp-plugins/lib"
                     self.assertEqual((plugin / "libnccl-net.so").read_text(),
-                                     "new\n" if nccl_completed else "old\n")
-                    self.assertEqual((plugin / "libobsolete.so").exists(), not nccl_completed)
+                                     "new\n" if name == "nvbandwidth_tool" else "old\n")
+                    self.assertEqual((plugin / "libobsolete.so").exists(), name != "nvbandwidth_tool")
                     bandwidth = case.root / "opt/nvidia/nvbandwidth"
-                    if script == "setup_sku_customizations.sh":
-                        self.assertEqual((bandwidth / "nvbandwidth").read_bytes(), b"mock verified payload\n")
-                    else:
-                        self.assertEqual(os.readlink(bandwidth / "nvbandwidth"), "old-binary")
-                        self.assertEqual((bandwidth / "nvbandwidth_main_0.9").read_text(), "old\n")
+                    self.assertEqual(os.readlink(bandwidth / "nvbandwidth"), "old-binary")
+                    self.assertEqual((bandwidth / "nvbandwidth_main_0.9").read_text(), "old\n")
                 finally:
                     case.doCleanups()
 
