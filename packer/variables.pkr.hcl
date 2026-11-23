@@ -98,13 +98,13 @@ variable "use_ubuntu_ppa_repo" {
 
 variable "ubuntu_ppa_repo_name" {
   type        = string
-  description = "Personal Package Archive Repo Name (only for GB-Family, set to None for released kernels or non GB-Family SKUs)"
+  description = "Kernel PPA in ppa:<owner>/<name> format; required when use_ubuntu_ppa_repo is enabled"
   default     = env("UBUNTU_PPA_REPO_NAME")
 }
 
 variable "ubuntu_ppa_kernel_patch_version" {
   type        = string
-  description = "Personal Package Archive Kernel Version (only for GB-Family, set to None for released kernels or non GB-Family SKUs)"
+  description = "Exact kernel meta-package version from the PPA; required when use_ubuntu_ppa_repo is enabled"
   default     = env("UBUNTU_PPA_KERNEL_PATCH_VERSION")
 }
 

@@ -147,25 +147,14 @@ install_ubuntu_nvidia_kernel() {
     
     export NEEDRESTART_MODE=a
     
-    apt-get update
-
     # In-place refresh: ensure DKMS builds OFED modules in dependency order
     # (iser/isert/srp need mlnx-ofed-kernel built first, but DKMS autoinstall
     # processes modules alphabetically and would otherwise fail).
     if [[ -d /var/lib/dkms/mlnx-ofed-kernel ]]; then
         configure_ofed_dkms_build_depends
     fi
-    local ubuntu_codename="noble"
-    kernel_ver="${KERNEL_VERSION:-6.8}"
-    if [ "$USE_UBUNTU_PPA_REPO" == "True" ]; then
-        echo "##[section] PPA kernel repo is enabled, installing PPA kernel version: $UBUNTU_PPA_KERNEL_PATCH_VERSION"
-        sudo add-apt-repository -y "$UBUNTU_PPA_REPO_NAME"
-        install_from_ppa_repo "linux-azure-nvidia-${kernel_ver}" "$UBUNTU_PPA_KERNEL_PATCH_VERSION" "$UBUNTU_PPA_REPO_NAME"
-    elif [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
-        install_from_proposed_suite "${ubuntu_codename}" linux-azure-nvidia-${kernel_ver}
-    else
-        sudo apt-get install linux-azure-nvidia-"$kernel_ver" -y
-    fi
+    local kernel_ver="${KERNEL_VERSION:-6.8}"
+    install_ubuntu_kernel_packages noble "linux-azure-nvidia-${kernel_ver}"
 
     # Purge non-nvidia kernels
     apt-get purge -y linux-azure linux-image-azure
@@ -267,30 +256,6 @@ Pin: release a=${codename}-proposed
 Pin-Priority: 100
 EOF
     sudo chmod 644 "${pref_file}"
-    sudo apt-get -y update
-}
-
-####
-# @Brief        : Install a package version explicitly from a Launchpad PPA
-# @Desc         : Creates a temporary package pin to the PPA origin, installs the exact
-#                 version, then removes the temporary pin file.
-# @Param        : package_name    - Package name
-# @Param        : package_version - Package version string
-# @Param        : ppa_repo_name   - PPA repo in format ppa:<owner>/<name>
-# @RetVal       : 0 on success
-####
-install_from_ppa_repo() {
-    local package_name=$1
-    local package_version=$2
-    local ppa_repo_name=$3
-    local ppa_ref="${ppa_repo_name#ppa:}"
-    local ppa_origin="LP-PPA-${ppa_ref//\//-}"
-
-    echo "##[section]Installing ${package_name}=${package_version} from ${ppa_repo_name} (origin: ${ppa_origin})"
-    sudo apt-get install -y "${package_name}=${package_version}"
-
-    echo "##[section]Installed ${package_name}=${package_version} from ${ppa_origin}, removing temporary pin"
-    configure_ppa_low_priority "$ppa_repo_name"
 }
 
 ####
@@ -316,22 +281,88 @@ EOF
 }
 
 ####
-# @Brief        : Install packages from Ubuntu proposed suite
-# @Desc         : Ensures proposed exists and is low-priority by default,
-#                 then installs with "-t <codename>-proposed" for explicit source selection.
-#                 due to APT's default lower priority for proposed.
-# @Param        : codename  - Ubuntu codename (noble, jammy, ...)
-# @Param        : ...       - Package names to install
+# @Brief        : Install Ubuntu kernel packages using one shared source policy
+# @Desc         : PPA (exact meta-package version) takes precedence over proposed,
+#                 then the default archive. Configure the source before probing extras.
+# @Param        : codename       - Ubuntu codename (jammy, noble, resolute, ...)
+# @Param        : kernel_package - Required kernel meta-package
+# @Param        : ...            - Optional packages to install if available
 # @RetVal       : 0 on success
 ####
-install_from_proposed_suite() {
+install_ubuntu_kernel_packages() {
     local codename=$1
-    shift
-    local packages=("$@")
+    local kernel_package=$2
+    shift 2
+    local use_ppa="${USE_UBUNTU_PPA_REPO:-false}"
+    local use_proposed="${USE_UBUNTU_PROPOSED_SUITE:-false}"
+    local apt_options=(-y)
+    local packages=("${kernel_package}")
+    local package
 
-    configure_ubuntu_proposed_suite "${codename}"
-    echo "##[section]Installing from ${codename}-proposed: ${packages[*]}"
-    apt-get install -y -t "${codename}-proposed" "${packages[@]}"
+    if [[ "${use_ppa,,}" == "true" ]]; then
+        if [[ "${UBUNTU_PPA_REPO_NAME:-}" != ppa:*/* ||
+              -z "${UBUNTU_PPA_KERNEL_PATCH_VERSION:-}" ||
+              "${UBUNTU_PPA_KERNEL_PATCH_VERSION}" == "None" ]]; then
+            echo "ERROR: PPA kernel installation requires a PPA name and exact meta-package version" >&2
+            return 1
+        fi
+        sudo add-apt-repository --no-update -y "${UBUNTU_PPA_REPO_NAME}"
+        packages=("${kernel_package}=${UBUNTU_PPA_KERNEL_PATCH_VERSION}")
+    elif [[ "${use_proposed,,}" == "true" ]]; then
+        configure_ubuntu_proposed_suite "${codename}"
+        apt_options+=(-t "${codename}-proposed")
+    fi
+
+    apt-get update
+    for package in "$@"; do
+        if apt-cache show "${package}" &>/dev/null; then
+            packages+=("${package}")
+        else
+            echo "##[section]Optional kernel package ${package} is unavailable; skipping"
+        fi
+    done
+
+    echo "##[section]Installing kernel packages: ${packages[*]}"
+    apt-get install "${apt_options[@]}" "${packages[@]}"
+
+    if [[ "${use_ppa,,}" == "true" ]]; then
+        configure_ppa_low_priority "${UBUNTU_PPA_REPO_NAME}"
+    fi
+}
+
+####
+# @Brief        : Remove installed 4K Azure kernels after switching to 64K
+# @Param        : kernel_ver - Target kernel minor version
+# @RetVal       : 0 on success
+####
+purge_ubuntu_4k_kernel() {
+    local kernel_ver=$1
+    local packages_to_remove
+    local packages=()
+
+    # Match only 4K meta-packages and ABI packages ending in -azure. In particular,
+    # keep shared packages such as linux-azure-7.0-headers-7.0.0-3019 and all 64K packages.
+    packages_to_remove=$(dpkg -l | awk -v kernel_ver="${kernel_ver}" '
+        $1 != "ii" { next }
+
+        $2 ~ /^linux-(azure|image-azure|headers-azure|tools-azure|cloud-tools-azure|modules-extra-azure)$/ {
+            print $2
+            next
+        }
+
+        $2 ~ /^linux-(image(-unsigned)?|cloud-tools|headers|modules(-extra)?|tools)-/ &&
+        index($2, "-" kernel_ver ".") && $2 ~ /-azure$/ { print $2 }
+    ')
+
+    if [[ -n "${packages_to_remove}" ]]; then
+        if grep -Eq '64k|^linux-azure-[0-9]' <<< "${packages_to_remove}"; then
+            echo "ERROR: purge list contains protected 64K/shared packages" >&2
+            return 1
+        fi
+        mapfile -t packages <<< "${packages_to_remove}"
+        printf 'Purging 4K kernel package: %s\n' "${packages[@]}"
+        apt-get purge -y "${packages[@]}"
+    fi
 }
 
 ####
@@ -341,7 +372,6 @@ install_from_proposed_suite() {
 ####
 install_ubuntu_lts_kernel() {
     local version=$1
-    local gpu_sku="${GPU_SKU}"
     
     # SKUs with rackscale NVLink use a special nvidia kernel, not LTS
     if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" != "7.0" ]]; then
@@ -359,8 +389,6 @@ install_ubuntu_lts_kernel() {
 
     case "${version}" in
         24.04)
-            apt update
-
             local kernel_ver="${KERNEL_VERSION:-6.8}"
             echo "##[section]Installing kernel ${kernel_ver} for Ubuntu 24.04"
 
@@ -376,21 +404,16 @@ install_ubuntu_lts_kernel() {
                 configure_ofed_dkms_build_depends
             fi
 
-            local ubuntu_codename="noble"
-
-            # Install the versioned kernel meta-package
-            if [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
-                local pkgs=("linux-azure-${kernel_ver}")
-                if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
-                    pkgs+=("linux-modules-extra-azure-${kernel_ver}")
-                fi
-                install_from_proposed_suite "${ubuntu_codename}" "${pkgs[@]}"
-            else
-                apt install -y linux-azure-${kernel_ver}
-                if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
-                    apt install -y linux-modules-extra-azure-${kernel_ver}
-                fi
+            local kernel_package="linux-azure-${kernel_ver}"
+            local extra_packages=("linux-modules-extra-azure-${kernel_ver}")
+            local use_ppa="${USE_UBUNTU_PPA_REPO:-false}"
+            # The 7.0 NVLink rackscale PPA publishes the 64K flavor under this
+            # unversioned meta-package. It must not pull in the 4K modules-extra.
+            if [[ "${NVLINK_RACKSCALE}" == "true" && "${kernel_ver}" == "7.0" && "${use_ppa,,}" == "true" ]]; then
+                kernel_package="linux-azure-64k"
+                extra_packages=()
             fi
+            install_ubuntu_kernel_packages noble "${kernel_package}" "${extra_packages[@]}"
             
             # Purge non-target kernels
             eval apt-get purge -y linux-azure linux-image-azure $purge_patterns || true
@@ -399,6 +422,9 @@ install_ubuntu_lts_kernel() {
                 apt-get purge -y linux-azure-lts-24.04 || true
             fi
 
+            if [[ "${kernel_package}" == "linux-azure-64k" ]]; then
+                purge_ubuntu_4k_kernel "${kernel_ver}"
+            fi
 
             if [[ "${NVLINK_RACKSCALE}" == "true" && "${KERNEL_VERSION}" == "7.0" ]]; then
                 configure_nvlink_rackscale_kernel
@@ -410,21 +436,14 @@ install_ubuntu_lts_kernel() {
             ;;
             
         26.04)
-            apt update
-
             # Ubuntu 26.04 (Resolute Raccoon) ships linux-azure-7.0 (kernel 7.0.0-*-azure)
             # as the versioned Azure meta-package. Allow KERNEL_VERSION to override.
             local kernel_ver="${KERNEL_VERSION:-7.0}"
             echo "##[section]Installing kernel ${kernel_ver} for Ubuntu 26.04"
 
-            apt install -y linux-azure-${kernel_ver}
             # linux-modules-extra-azure-${kernel_ver} is not published for 7.0 in resolute;
             # contents were folded into linux-modules-azure-${kernel_ver}. Install only if present.
-            if apt-cache show linux-modules-extra-azure-${kernel_ver} &>/dev/null; then
-                apt install -y linux-modules-extra-azure-${kernel_ver}
-            else
-                echo "##[warning]linux-modules-extra-azure-${kernel_ver} is not in the archive; skipping (modules already in linux-modules-azure-${kernel_ver})."
-            fi
+            install_ubuntu_kernel_packages resolute "linux-azure-${kernel_ver}" "linux-modules-extra-azure-${kernel_ver}"
 
             apt autoremove -y
             apt upgrade -y
@@ -433,13 +452,7 @@ install_ubuntu_lts_kernel() {
             ;;
 
         22.04)
-            apt update
-            local ubuntu_codename="jammy"
-            if [ "$USE_UBUNTU_PROPOSED_SUITE" == "True" ]; then
-                install_from_proposed_suite "${ubuntu_codename}" linux-azure-lts-22.04
-            else
-                apt install -y linux-azure-lts-22.04
-            fi        
+            install_ubuntu_kernel_packages jammy linux-azure-lts-22.04
             # Purge non-LTS kernels
             apt-get purge -y \
                 linux-azure linux-image-azure \

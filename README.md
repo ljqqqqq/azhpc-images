@@ -48,6 +48,8 @@ packer build --var 'target_vm_size=Standard_ND96asr_v4' --var 'os_family=ubuntu'
 
 # Kernel Update/Patching
 
+Ubuntu 22.04, 24.04, and 26.04 builds share the same kernel source selection: `use_ubuntu_ppa_repo` takes precedence over `use_ubuntu_proposed_suite`; otherwise packages come from the default archive. PPA builds require `ubuntu_ppa_repo_name` (`ppa:<owner>/<name>`) and `ubuntu_ppa_kernel_patch_version` (the exact kernel meta-package version). PPA and proposed packages are kept at low priority for subsequent upgrades. Ubuntu 24.04 NVLink rackscale builds using kernel 7.0 from a PPA install `linux-azure-64k` and remove the corresponding 4K kernel packages while retaining shared headers. Other kernel selections remain unchanged.
+
 Historically, OS kernel updates broke compatibility of HPC components we install (e.g., Lustre), so the kernel was excluded from updates. Lustre was the last component tightly coupled to a specific kernel version, and it has since been switched to DKMS. As a result, the kernel is **no longer locked by default** in our HPC images, and kernel updates are now allowed.
 
 Ubuntu images, including AMD and AKS host images, configure the CUDA APT repository and install its latest DKMS package through [install_cuda_repo_and_dkms.sh](components/install_cuda_repo_and_dkms.sh) before installing kernel modules. A DKMS-specific APT preference favors NVIDIA's more up-to-date prebuilt package. On AMD images, all other packages from the CUDA repository are blocked by an APT pin; NVIDIA images retain the CUDA keyring's normal repository preferences. RHEL-family DKMS installation is unchanged.
