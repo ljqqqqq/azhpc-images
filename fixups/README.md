@@ -137,6 +137,17 @@ SKIP_PREREQUISITES=true
 EXTRA_PROVISION_SCRIPT=fixups/upgrade_ubuntu2604_vr200.sh
 ```
 
+To refresh only the SKU customization dispatcher and scripts on an existing
+image, use:
+
+```text
+EXTRA_PROVISION_SCRIPT=fixups/refresh_sku_customizations.sh
+```
+
+The wrapper derives the repository paths and distribution value before calling
+`components/setup_sku_customizations.sh`; no additional environment variables
+are required beyond the values already supplied by Packer.
+
 Keep `skip_hpc=false` and validation enabled. `SKIP_PREREQUISITES=true` is required
 for this use case to retain the inherited kernel and avoid the earlier system
 package update step. That setting also skips Packer's generic component-version
