@@ -2,6 +2,13 @@
 set -euo pipefail
 : "${TOP_DIR:?Run through upgrade_ubuntu2604_vr200.sh}"
 source "${UTILS_DIR}/utilities.sh"
+driver_only=false
+if [[ $# -eq 1 && "$1" == --driver-only ]]; then
+    driver_only=true
+elif [[ $# -ne 0 ]]; then
+    echo "Usage: $0 [--driver-only]" >&2
+    exit 1
+fi
 check_package() {
     local name=$1 expected=$2 actual status
     status=$(dpkg-query -W -f='${db:Status-Status}' "$name")
@@ -27,41 +34,47 @@ check_dkms() {
     return 1
 }
 nvidia_metadata=$(get_component_config nvidia)
-cuda_metadata=$(get_component_config cuda)
-doca_metadata=$(get_component_config doca)
-nccl_metadata=$(get_component_config nccl)
-nvbandwidth_metadata=$(get_component_config nvbandwidth)
 driver_version=$(jq -r '.driver.version' <<< "$nvidia_metadata")
 for name in nvidia-dkms-open nvidia-headless-open nvidia-headless-no-dkms-open \
             nvidia-kernel-common nvidia-firmware nvidia-modprobe nvidia-persistenced \
             libnvidia-compute libnvidia-cfg1 libnvidia-gpucomp libnvidia-imex1; do
     check_package "$name" "$driver_version"
 done
-check_package nvidia-imex-direct "$(jq -r '.imex.version' <<< "$nvidia_metadata")"
-cuda_version=$(jq -r '.driver.version' <<< "$cuda_metadata")
-check_package "cuda-toolkit-${cuda_version//./-}" "$(jq -r '.driver.package_version' <<< "$cuda_metadata")"
-check_package doca-ofed "$(jq -r '.package_version' <<< "$doca_metadata")"
-nccl_package_version=$(jq -r '.version' <<< "$nccl_metadata")
-check_package libnccl2 "$nccl_package_version"
-check_package libnccl-dev "$nccl_package_version"
-
 # Check the exact new NVIDIA version for the running kernel; an old installed
 # DKMS registration must not make the upgrade appear successful.
 module_version=${driver_version%%-*}
 check_dkms nvidia "$module_version"
 [[ $(modinfo -F version nvidia) == "$module_version" ]]
-# The installed doca-ofed package pins these four DKMS packages to its OFED build.
-# Their DKMS PACKAGE_VERSION includes the Debian revision (unlike NVIDIA).
-ofed_version=$(dpkg-query -W -f='${Depends}' doca-ofed | sed -n 's/.*mlnx-ofed-kernel-dkms (= \([^)]*\)).*/\1/p')
-[[ -n "$ofed_version" ]] || { echo 'Missing exact OFED DKMS dependency.' >&2; exit 1; }
-for name in mlnx-ofed-kernel iser isert srp; do
-    check_package "${name}-dkms" "$ofed_version"
-    check_dkms "$name" "$ofed_version"
-done
+if [[ "$driver_only" == true ]]; then
+    check_package nvidia-kernel-source-open "$driver_version"
+fi
+if [[ "$driver_only" != true ]]; then
+    cuda_metadata=$(get_component_config cuda)
+    doca_metadata=$(get_component_config doca)
+    nccl_metadata=$(get_component_config nccl)
+    nvbandwidth_metadata=$(get_component_config nvbandwidth)
+    check_package nvidia-imex-direct "$(jq -r '.imex.version' <<< "$nvidia_metadata")"
+    cuda_version=$(jq -r '.driver.version' <<< "$cuda_metadata")
+    check_package "cuda-toolkit-${cuda_version//./-}" "$(jq -r '.driver.package_version' <<< "$cuda_metadata")"
+    check_package doca-ofed "$(jq -r '.package_version' <<< "$doca_metadata")"
+    nccl_package_version=$(jq -r '.version' <<< "$nccl_metadata")
+    check_package libnccl2 "$nccl_package_version"
+    check_package libnccl-dev "$nccl_package_version"
+    # The installed doca-ofed package pins these four DKMS packages to its OFED build.
+    # Their DKMS PACKAGE_VERSION includes the Debian revision (unlike NVIDIA).
+    ofed_version=$(dpkg-query -W -f='${Depends}' doca-ofed | sed -n 's/.*mlnx-ofed-kernel-dkms (= \([^)]*\)).*/\1/p')
+    [[ -n "$ofed_version" ]] || { echo 'Missing exact OFED DKMS dependency.' >&2; exit 1; }
+    for name in mlnx-ofed-kernel iser isert srp; do
+        check_package "${name}-dkms" "$ofed_version"
+        check_dkms "$name" "$ofed_version"
+    done
+fi
 apt-get check
 audit=$(dpkg --audit)
 [[ -z "$audit" ]] || { printf '%s\n' "$audit" >&2; exit 1; }
-binary=$(jq -r '.binary_file' <<< "$nvbandwidth_metadata")
-[[ $(readlink -f /opt/nvidia/nvbandwidth/nvbandwidth) == "/opt/nvidia/nvbandwidth/${binary}" ]]
-verify_checksum "/opt/nvidia/nvbandwidth/${binary}" "$(jq -r '.sha256' <<< "$nvbandwidth_metadata")"
-echo 'Target component package/module versions verified; runtime checks follow reboot.'
+if [[ "$driver_only" != true ]]; then
+    binary=$(jq -r '.binary_file' <<< "$nvbandwidth_metadata")
+    [[ $(readlink -f /opt/nvidia/nvbandwidth/nvbandwidth) == "/opt/nvidia/nvbandwidth/${binary}" ]]
+    verify_checksum "/opt/nvidia/nvbandwidth/${binary}" "$(jq -r '.sha256' <<< "$nvbandwidth_metadata")"
+fi
+echo 'Target package/module versions verified; runtime checks follow reboot.'

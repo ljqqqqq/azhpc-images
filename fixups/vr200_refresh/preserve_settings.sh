@@ -11,17 +11,29 @@ snapshot_image_settings() {
 }
 
 prepare_image_settings() {
-    local package
-    # Temporarily unhold only packages within the component families being
-    # upgraded, including already-held OFED/driver dependencies.
-    while IFS= read -r package; do
-        case "$package" in
-            nvidia-container*|libnvidia-container*) continue ;;
-            nvidia-*|libnvidia-*|cuda-*|doca-*|mlnx-*|libnccl*|gdrdrv-dkms*|libgdrapi*|gdrcopy*|\
-            rdma-core*|libibverbs*|ibverbs-*|librdmacm*|libibumad*|libibmad*|iser-dkms*|isert-dkms*|srp-dkms*)
-                apt-mark unhold "$package" ;;
-        esac
-    done < "${VR200_STATE_DIR}/original-holds.txt"
+    local package requested
+    if [[ $# -gt 0 ]]; then
+        # A scoped refresh releases only the explicitly requested package holds.
+        while IFS= read -r package; do
+            for requested in "$@"; do
+                if [[ "${package%%:*}" == "${requested%%:*}" ]]; then
+                    apt-mark unhold "$package"
+                    break
+                fi
+            done
+        done < "${VR200_STATE_DIR}/original-holds.txt"
+    else
+        # Temporarily unhold only packages within the component families being
+        # upgraded, including already-held OFED/driver dependencies.
+        while IFS= read -r package; do
+            case "$package" in
+                nvidia-container*|libnvidia-container*) continue ;;
+                nvidia-*|libnvidia-*|cuda-*|doca-*|mlnx-*|libnccl*|gdrdrv-dkms*|libgdrapi*|gdrcopy*|\
+                rdma-core*|libibverbs*|ibverbs-*|librdmacm*|libibumad*|libibmad*|iser-dkms*|isert-dkms*|srp-dkms*)
+                    apt-mark unhold "$package" ;;
+            esac
+        done < "${VR200_STATE_DIR}/original-holds.txt"
+    fi
     # Suppress maintainer-script restarts; preserve the original file/symlink.
     printf '#!/bin/sh\nexit 101\n' > "${VR200_STATE_DIR}/policy-rc.d"
     rm -f -- "$policy_rc_path"

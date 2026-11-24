@@ -2,54 +2,52 @@
 set -euo pipefail
 # Packer: EXTRA_PROVISION_SCRIPT=fixups/upgrade_ubuntu2604_vr200.sh
 # Direct use: sudo bash fixups/upgrade_ubuntu2604_vr200.sh [local-archive.tar.gz]
+# This refresh updates only NVIDIA driver packages and their local repository.
 
 [[ $# -le 1 ]] || { echo "Usage: $0 [local-archive.tar.gz]" >&2; exit 1; }
 [[ ${EUID} -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
-export TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export TOP_DIR
 export COMPONENT_DIR="${TOP_DIR}/components" UTILS_DIR="${TOP_DIR}/utils"
-export AZHPC_IMAGES_TEST_DIR="${TOP_DIR}/tests"
 export GPU="${GPU:-NVIDIA}" SKU="${SKU:-${GPU_SKU:-VR200}}"
 export TARGET_NODE_TYPE="${TARGET_NODE_TYPE:-azure_vm_regular}"
-export DISTRIBUTION="$(. /etc/os-release; printf '%s%s' "$ID" "$VERSION_ID")"
-export ARCHITECTURE="$(uname -m)" ARCHITECTURE_DISTRO="$(dpkg --print-architecture)"
-export MODULE_FILES_DIRECTORY=/usr/share/modules/modulefiles
-export NVLINK_RACKSCALE=true REFRESH_MODE=true LC_ALL=C DEBIAN_FRONTEND=noninteractive
+DISTRIBUTION="$(. /etc/os-release; printf '%s%s' "$ID" "$VERSION_ID")"
+ARCHITECTURE="$(uname -m)"
+ARCHITECTURE_DISTRO="$(dpkg --print-architecture)"
+export DISTRIBUTION ARCHITECTURE ARCHITECTURE_DISTRO
+export REFRESH_MODE=true LC_ALL=C DEBIAN_FRONTEND=noninteractive
 unset UCF_FORCE_CONFFOLD
 export UCF_FORCE_CONFFNEW=1 NEEDRESTART_MODE=l
 [[ "$DISTRIBUTION" == ubuntu26.04 && "$ARCHITECTURE" == aarch64 &&
    "$ARCHITECTURE_DISTRO" == arm64 && "$GPU" == NVIDIA && "$SKU" == VR200 &&
    "$TARGET_NODE_TYPE" == azure_vm_regular ]] || { echo 'Requires Ubuntu 26.04 arm64 NVIDIA VR200 azure_vm_regular.' >&2; exit 1; }
 
-# set_properties.sh also performs a blanket OS upgrade; initialize explicitly.
+# Do not source set_properties.sh: it also performs a blanket OS upgrade.
 COMPONENT_VERSIONS=$(jq -c . "${TOP_DIR}/versions.json")
 export COMPONENT_VERSIONS
 source "${UTILS_DIR}/utilities.sh"
 source "${TOP_DIR}/fixups/vr200_refresh/preserve_settings.sh"
+source "${COMPONENT_DIR}/configure_nvidia_repositories.sh"
 if [[ -n "${1:-}" ]]; then tar -xzf "$1" -C "$TOP_DIR"; fi
 
 nvidia_metadata=$(get_component_config nvidia)
-cuda_metadata=$(get_component_config cuda)
-doca_metadata=$(get_component_config doca)
-nccl_metadata=$(get_component_config nccl)
-nvbandwidth_metadata=$(get_component_config nvbandwidth)
-verify_bit() {
-    local file=$1 checksum=$2
-    [[ -f "${TOP_DIR}/internal_bits/${file}" && "$checksum" =~ ^[[:xdigit:]]{64}$ ]] ||
-        { echo "Missing private input/checksum: ${file}" >&2; exit 1; }
-    verify_checksum "${TOP_DIR}/internal_bits/${file}" "$checksum"
-}
 jq -e '.driver.source == "private"' <<< "$nvidia_metadata" >/dev/null
-jq -e '.driver.source == "private"' <<< "$cuda_metadata" >/dev/null
-for metadata in "$doca_metadata" "$nvbandwidth_metadata"; do
-    jq -e '.source == "private"' <<< "$metadata" >/dev/null
-done
-jq -e '.source == "public" and (.version | length > 0)' <<< "$nccl_metadata" >/dev/null
-verify_bit "$(jq -r '.driver.repo_file' <<< "$nvidia_metadata")" "$(jq -r '.driver.sha256' <<< "$nvidia_metadata")"
-verify_bit "$(jq -r '.driver.repo_file' <<< "$cuda_metadata")" "$(jq -r '.driver.sha256' <<< "$cuda_metadata")"
-verify_bit "$(jq -r '.repo_file' <<< "$doca_metadata")" "$(jq -r '.sha256' <<< "$doca_metadata")"
-verify_bit "$(jq -r '.binary_file' <<< "$nvbandwidth_metadata")" "$(jq -r '.sha256' <<< "$nvbandwidth_metadata")"
+driver_version=$(jq -er '.driver.version' <<< "$nvidia_metadata")
+repo_file=$(jq -er '.driver.repo_file' <<< "$nvidia_metadata")
+repo_path="${TOP_DIR}/internal_bits/${repo_file}"
+verify_checksum "$repo_path" "$(jq -er '.driver.sha256' <<< "$nvidia_metadata")"
+repo_package=$(dpkg-deb -f "$repo_path" Package)
+[[ "$repo_package" == nvidia-driver-local-repo-* ]] || { echo 'Unexpected NVIDIA repository package.' >&2; exit 1; }
 [[ -d "/lib/modules/$(uname -r)/build" ]] || { echo 'Running-kernel headers are missing.' >&2; exit 1; }
-bash -e -c 'source /etc/profile.d/modules.sh; module load mpi/hpcx; test -d "$HPCX_MPI_DIR"; test -d "$HPCX_SHARP_DIR"; test -d "$HPCX_UCX_DIR"'
+
+# Include the versioned driver libraries, including libnvidia-imex1, but leave
+# the standalone nvidia-imex-direct package and its service configuration alone.
+driver_packages=(nvidia-dkms-open nvidia-headless-open nvidia-headless-no-dkms-open
+                 nvidia-kernel-common nvidia-kernel-source-open nvidia-firmware
+                 nvidia-modprobe nvidia-persistenced libnvidia-compute libnvidia-cfg1
+                 libnvidia-gpucomp libnvidia-imex1)
+package_args=()
+for package in "${driver_packages[@]}"; do package_args+=("${package}=${driver_version}"); done
 
 export VR200_STATE_DIR
 VR200_STATE_DIR=$(mktemp -d /var/tmp/vr200-in-place-upgrade.XXXXXX)
@@ -57,40 +55,15 @@ export VR200_REPORT_DIR="/var/tmp/azhpc-image-evidence/${IMAGE_EVIDENCE_RUN_NAME
 install -d -m 0700 "$VR200_REPORT_DIR"
 settings_saved=false
 settings_restored=false
-nccl_completed=false
-nvbandwidth_completed=false
-nccl_paths=(/tmp/nccl-tests /tmp/nccl-rdma-sharp-plugins /opt/nccl-tests /usr/local/nccl-rdma-sharp-plugins)
-nvbandwidth_path=/opt/nvidia/nvbandwidth
-
 cleanup() {
-    local rc=$? path
+    local rc=$?
     trap - EXIT
     set +e
     if [[ "$settings_saved" == true && "$settings_restored" != true ]]; then
         restore_image_settings || rc=1
     fi
-    # Restore scratch directories and any directories whose installer failed.
-    # Successful directory replacements and package upgrades are not rolled back.
-    for path in "${nccl_paths[@]}" "$nvbandwidth_path"; do
-        case "$path" in
-            /opt/nccl-tests|/usr/local/nccl-rdma-sharp-plugins)
-                [[ "$nccl_completed" != true ]] || continue ;;
-            "$nvbandwidth_path")
-                [[ "$nvbandwidth_completed" != true ]] || continue ;;
-        esac
-        if [[ -e "${VR200_STATE_DIR}/previous${path}" || -L "${VR200_STATE_DIR}/previous${path}" ]]; then
-            if [[ -e "$path" || -L "$path" ]]; then
-                mkdir -p "$(dirname "${VR200_STATE_DIR}/generated${path}")"
-                mv "$path" "${VR200_STATE_DIR}/generated${path}" || rc=1
-            fi
-            mv "${VR200_STATE_DIR}/previous${path}" "$path" || rc=1
-            if [[ "$path" == /usr/local/nccl-rdma-sharp-plugins ]]; then
-                ldconfig || rc=1
-            fi
-        fi
-    done
     if [[ $rc -eq 0 ]]; then rm -rf -- "$VR200_STATE_DIR"; else
-        echo "ERROR: upgrade failed; work/state backups retained at ${VR200_STATE_DIR}; reports: ${VR200_REPORT_DIR}. Package changes are not rolled back." >&2
+        echo "ERROR: NVIDIA driver refresh failed; state retained at ${VR200_STATE_DIR}; reports: ${VR200_REPORT_DIR}. Package changes are not rolled back." >&2
     fi
     exit "$rc"
 }
@@ -98,51 +71,40 @@ trap cleanup EXIT
 snapshot_image_settings
 settings_saved=true
 dpkg-query -W -f='${binary:Package}\t${Version}\n' | sort > "${VR200_REPORT_DIR}/packages-before.tsv"
-
-# Use the new package configuration during noninteractive upgrades. APT may
-# replace conflicting packages as required by the component installers.
-# No component purge, autoremove, or explicit DKMS removal is performed.
 export APT_CONFIG="${VR200_STATE_DIR}/apt-install.conf"
 cat > "$APT_CONFIG" <<'EOF'
 Dpkg::Options { "--force-confnew"; };
 EOF
-prepare_image_settings
+prepare_image_settings "${driver_packages[@]}" "$repo_package"
 
-run_component() {
-    local script=$1
-    mkdir -p "${VR200_STATE_DIR}/work/${script%.sh}"
-    echo "##[section]VR200 in-place upgrade: ${script}"
-    (cd "${VR200_STATE_DIR}/work/${script%.sh}" && bash "${COMPONENT_DIR}/${script}")
-}
-move_previous_paths() {
-    local path
-    for path in "$@"; do
-        if [[ -e "$path" || -L "$path" ]]; then
-            mkdir -p "$(dirname "${VR200_STATE_DIR}/previous${path}")"
-            mv "$path" "${VR200_STATE_DIR}/previous${path}"
-        fi
+# Import only the new driver repository; do not reconfigure CUDA/public sources.
+# shellcheck disable=SC2034 # Read by the sourced install_local_repository helper.
+refresh=true
+install_local_repository nvidia "$nvidia_metadata" 2>&1 | tee "${VR200_REPORT_DIR}/nvidia-repository.log"
+
+# Fail before changing driver packages if APT needs another component changed.
+install_args=(install -y --no-remove --no-install-recommends "${package_args[@]}")
+apt-get --simulate "${install_args[@]}" 2>&1 | tee "${VR200_REPORT_DIR}/nvidia-plan.log"
+while read -r action package _; do
+    [[ "$action" == Inst || "$action" == Remv ]] || continue
+    allowed=false
+    for driver_package in "${driver_packages[@]}"; do
+        [[ "${package%%:*}" != "$driver_package" ]] || allowed=true
     done
-}
-run_component install_doca.sh 2>&1 | tee "${VR200_REPORT_DIR}/doca.log"
-"${COMPONENT_DIR}/configure_nvidia_repositories.sh" --refresh \
-    2>&1 | tee "${VR200_REPORT_DIR}/nvidia-cuda-repositories.log"
-run_component install_nvidiagpudriver.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvidia.log"
-move_previous_paths "${nccl_paths[@]}"
-run_component install_nccl.sh 2>&1 | tee "${VR200_REPORT_DIR}/nccl.log"
-nccl_completed=true
-move_previous_paths "$nvbandwidth_path"
-run_component install_nvbandwidth_tool.sh 2>&1 | tee "${VR200_REPORT_DIR}/nvbandwidth.log"
-nvbandwidth_completed=true
+    if [[ "$action" == Remv || "$allowed" != true ]]; then
+        echo "ERROR: driver-only refresh would ${action} unrelated/conflicting package ${package}." >&2
+        exit 1
+    fi
+done < "${VR200_REPORT_DIR}/nvidia-plan.log"
 
-bash "${TOP_DIR}/fixups/vr200_refresh/apply_image_fixes.sh" 2>&1 | tee "${VR200_REPORT_DIR}/image-fixes.log"
-
-# Restore only the temporary policy-rc.d and original package holds.
-# Component configuration remains as written by the installers.
+echo '##[section]VR200 in-place refresh: NVIDIA driver only'
+apt-get "${install_args[@]}" 2>&1 | tee "${VR200_REPORT_DIR}/nvidia.log"
 restore_image_settings
 settings_restored=true
 ldconfig
 update-initramfs -u -k all
-bash "${TOP_DIR}/fixups/vr200_refresh/remove_nolpi.sh" 2>&1 | tee "${VR200_REPORT_DIR}/remove-nolpi.log"
-bash "${TOP_DIR}/fixups/vr200_refresh/verify_versions.sh" 2>&1 | tee "${VR200_REPORT_DIR}/verify-versions.log"
+bash "${TOP_DIR}/fixups/vr200_refresh/verify_versions.sh" --driver-only \
+    2>&1 | tee "${VR200_REPORT_DIR}/verify-versions.log"
+write_component_version NVIDIA "${driver_version%%-*}"
 dpkg-query -W -f='${binary:Package}\t${Version}\n' | sort > "${VR200_REPORT_DIR}/packages-after.tsv"
-echo '##[section]Target components upgraded in place. Reboot before GPU/RDMA runtime validation.'
+echo '##[section]NVIDIA driver upgraded in place. Reboot before GPU/RDMA runtime validation.'
