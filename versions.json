@@ -1059,10 +1059,10 @@
             "aarch64": {
                 "azure_vm_regular": {
                     "nvidia_vr200": {
-                        "version": "0.9",
+                        "version": "0.10_v7",
                         "source": "private",
-                        "binary_file": "nvbandwidth_main_0.9",
-                        "sha256": "c8e10546f5354717ed5587b3ba56a6c6072d81351abf074db2e533054e63ea1b"
+                        "binary_file": "nvbandwidth_main_0.10_v7",
+                        "sha256": "3dd2d785360069f46ed195c1320b39aea23ee1c00c60dd5deee07b0eb0c8e4fc"
                     }
                 }
             }

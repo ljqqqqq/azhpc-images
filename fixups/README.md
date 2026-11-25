@@ -70,3 +70,33 @@ Run the mock regression checks on Linux (no system package changes):
 ```bash
 python3 fixups/vr200_refresh/test_upgrade.py
 ```
+
+## nvbandwidth-only in-place refresh
+
+`upgrade_ubuntu2604_vr200_nvbandwidth.sh` updates only the private nvbandwidth
+binary, its `/opt/nvidia/nvbandwidth/nvbandwidth` symlink and the `NVBANDWIDTH`
+component record. It uses the version, filename and SHA256 from `versions.json`
+(currently `0.10_v7`). It does not install dependencies, change driver/CUDA/NCCL
+packages or run the NVIDIA driver refresh. No reboot is required.
+
+For Packer, stage `internal_bits/nvbandwidth_main_0.10_v7` in the supplied
+internal-bits directory/archive and use:
+
+```text
+REFRESH_MODE=true
+REFRESH_BASE_IMAGE_ID=<previous HPC SIG image version resource ID>
+SKIP_PREREQUISITES=true
+EXTRA_PROVISION_SCRIPT=fixups/upgrade_ubuntu2604_vr200_nvbandwidth.sh
+```
+
+For direct use with already-staged bits, omit the argument. Alternatively,
+supply the new binary from a Linux-accessible path:
+
+```bash
+sudo bash fixups/upgrade_ubuntu2604_vr200_nvbandwidth.sh /path/to/nvbandwidth_main_0.10_v7
+```
+
+The script checks the input checksum before installation, then verifies the
+installed checksum, symlink and component record. Run nvbandwidth smoke/performance
+validation on a VR200 machine with its existing CUDA/HPC-X environment; these
+file checks do not establish GPU runtime compatibility or performance.
