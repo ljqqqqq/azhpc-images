@@ -14,8 +14,8 @@ NVBANDWIDTH_COMMIT=$(jq -r '.commit // empty' <<< $nvbandwidth_metadata)
 NVBANDWIDTH_REF=$(jq -r '.ref // .branch // empty' <<< $nvbandwidth_metadata)
 NVBANDWIDTH_REF=${NVBANDWIDTH_REF:-v${NVBANDWIDTH_VERSION}}
 
-if [[ "$NVBANDWIDTH_SOURCE" != "private" ]]; then
-    # Install source-build dependencies.
+if [[ "$NVBANDWIDTH_SOURCE" != "private" && "$NVBANDWIDTH_VERSION" != "0.11.0" ]]; then
+    # Older releases need Boost; v0.11.0 fetches pinned argparse through CMake.
     if [[ $DISTRIBUTION == *"ubuntu"* ]]; then
         apt install -y libboost-program-options-dev
     elif [[ $DISTRIBUTION == almalinux* ]]; then
@@ -42,14 +42,14 @@ else
     # Build and install the nvbandwidth tool.
     pushd nvbandwidth
     git checkout ${NVBANDWIDTH_COMMIT}
-    write_repo_source_info "NVBANDWIDTH" . \
-        --commit "${NVBANDWIDTH_COMMIT}" \
-        --ref "${NVBANDWIDTH_REF}"
     source /etc/profile.d/modules.sh
     module load mpi/hpcx
     cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DMULTINODE=1 .
     make
-    mv ./nvbandwidth $dest_dir
+    mv -fT ./nvbandwidth "$dest_dir/nvbandwidth"
+    write_repo_source_info "NVBANDWIDTH" . \
+        --commit "${NVBANDWIDTH_COMMIT}" \
+        --ref "${NVBANDWIDTH_REF}"
     popd
 
     rm -rf ./nvbandwidth

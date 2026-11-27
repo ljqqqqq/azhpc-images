@@ -1059,10 +1059,10 @@
             "aarch64": {
                 "azure_vm_regular": {
                     "nvidia_vr200": {
-                        "version": "0.10_v7",
-                        "source": "private",
-                        "binary_file": "nvbandwidth_main_0.10_v7",
-                        "sha256": "3dd2d785360069f46ed195c1320b39aea23ee1c00c60dd5deee07b0eb0c8e4fc"
+                        "version": "0.11.0",
+                        "ref": "v0.11.0",
+                        "url": "https://github.com/NVIDIA/nvbandwidth",
+                        "commit": "201eaf7f25eda954d08a7c4fed9d8325e3c32ddf"
                     }
                 }
             }

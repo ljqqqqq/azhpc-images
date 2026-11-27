@@ -73,14 +73,21 @@ python3 fixups/vr200_refresh/test_upgrade.py
 
 ## nvbandwidth-only in-place refresh
 
-`upgrade_ubuntu2604_vr200_nvbandwidth.sh` updates only the private nvbandwidth
-binary, its `/opt/nvidia/nvbandwidth/nvbandwidth` symlink and the `NVBANDWIDTH`
-component record. It uses the version, filename and SHA256 from `versions.json`
-(currently `0.10_v7`). It does not install dependencies, change driver/CUDA/NCCL
-packages or run the NVIDIA driver refresh. No reboot is required.
+`upgrade_ubuntu2604_vr200_nvbandwidth.sh` builds official nvbandwidth `v0.11.0`
+from the tag and pinned commit in the VR200 entry of `versions.json`. It loads
+`mpi/hpcx` and passes `-DMULTINODE=1` to CMake,
+producing an MPI-enabled Release binary at `/opt/nvidia/nvbandwidth/nvbandwidth`.
+It also updates the `NVBANDWIDTH` version and repository commit/ref records.
+It does not install dependencies or change driver/CUDA/NCCL/IMEX packages or
+configuration. No reboot is required.
 
-For Packer, stage `internal_bits/nvbandwidth_main_0.10_v7` in the supplied
-internal-bits directory/archive and use:
+The inherited image must already contain git, make, CMake >= 3.20, a C++17 compiler,
+CUDA >= 12.3 with a compatible driver >= 550, and the HPC-X MPI module. Internet
+access is required to clone NVIDIA's repository and download CMake's pinned
+argparse dependency. This version does not require Boost or a private nvbandwidth
+binary in `internal_bits/`. Multinode runtime tests reuse the existing IMEX setup.
+
+For Packer, use:
 
 ```text
 REFRESH_MODE=true
@@ -89,14 +96,16 @@ SKIP_PREREQUISITES=true
 EXTRA_PROVISION_SCRIPT=fixups/upgrade_ubuntu2604_vr200_nvbandwidth.sh
 ```
 
-For direct use with already-staged bits, omit the argument. Alternatively,
-supply the new binary from a Linux-accessible path:
+For direct use:
 
 ```bash
-sudo bash fixups/upgrade_ubuntu2604_vr200_nvbandwidth.sh /path/to/nvbandwidth_main_0.10_v7
+sudo bash fixups/upgrade_ubuntu2604_vr200_nvbandwidth.sh
 ```
 
-The script checks the input checksum before installation, then verifies the
-installed checksum, symlink and component record. Run nvbandwidth smoke/performance
-validation on a VR200 machine with its existing CUDA/HPC-X environment; these
-file checks do not establish GPU runtime compatibility or performance.
+Source and build files use a temporary directory. The existing binary (including
+the old private-binary symlink) is replaced only after a successful build; a build
+failure leaves the installed tool and component records unchanged. The script
+then checks the executable and version/commit/ref records. Run GPU and multinode
+smoke/performance validation on VR200 with the existing CUDA/HPC-X/IMEX environment.
+v0.11.0 changes warm-up synchronization and adds tests, so keep the exact tool
+version with performance results when comparing against the private `0.10_v7`.
